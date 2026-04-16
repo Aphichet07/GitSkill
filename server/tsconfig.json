@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* Base Options */
+    "target": "ES2023",
+    "module": "NodeNext", 
+    "moduleResolution": "NodeNext", 
+    "lib": ["ES2023"],
+    "types": ["node"],
+    
+    /* File Layout */
+    "rootDir": "./",
+    "outDir": "./dist",
+
+    /* Interop & Helpers */
+    "esModuleInterop": true, 
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true, 
+
+    /* Prisma & Strictness */
+    "strict": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "declaration": true,
+    "noUncheckedIndexedAccess": true,
+    
+    /* Extra Recommended */
+    "isolatedModules": true,
+    "moduleDetection": "force"
+  },
+  "include": [
+    "**/*.ts",            
+    ".env"              
+  ],
+  "exclude": ["node_modules", "dist", "generated"]
+}
