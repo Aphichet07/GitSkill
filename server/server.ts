@@ -5,6 +5,7 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import router from "./routes/route.js";
 import passport from "./lib/passport.js";
+import connectMongo from "./lib/mongo.js";
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+connectMongo()
 
 app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
