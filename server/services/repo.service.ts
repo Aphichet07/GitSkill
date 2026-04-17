@@ -32,12 +32,11 @@ const RepoService = {
           Accept: "application/vnd.github.v3+json",
         },
         params: {
-          sort: "updated",
-          per_page: 10,
+          sort: "updated"
         },
       });
-
       const repos = response.data.map((repo: any) => ({
+        id: repo.id,
         name: repo.name,
         description: repo.description,
         url: repo.html_url,
