@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import Sidebar from "@/component/ui/SideBar";
 
 function Dashboard() {
   const [isLoginGithub, setIsLoginGithub] = useState<boolean>(false);
@@ -14,7 +15,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-8xl">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-[#26318c]">
           Dashboard Overview

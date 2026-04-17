@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Logo from "@/asset/logo1.png";
-import Slide from "@/components/ui/slide";
+import Slide from "@/component/ui/slide";
 import AuthModal from "../modals/authModal";
 function HeroBackground() {
   const [isModalOpen, setIsModalOpen] = useState(false);

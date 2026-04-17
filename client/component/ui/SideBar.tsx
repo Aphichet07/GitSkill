@@ -71,7 +71,7 @@ function Sidebar() {
             </Link>
 
             <Link
-              href="/home"
+              href="/dashboard/report"
               className="group flex items-center h-11 px-4 rounded-xl text-[#26318c] hover:bg-white/50 hover:shadow-sm transition-all duration-200"
             >
               <FileUser
@@ -79,7 +79,7 @@ function Sidebar() {
                 strokeWidth={1.5}
                 className="shrink-0 opacity-70 group-hover:opacity-100"
               />
-              <span className="ml-3 text-sm font-medium">Resume</span>
+              <span className="ml-3 text-sm font-medium">Report</span>
             </Link>
           </div>
         </nav>
