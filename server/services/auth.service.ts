@@ -55,7 +55,7 @@ const AuthService = {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password!);
     if (!isPasswordValid) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
 
     if (!user.isVerified) {
