@@ -10,11 +10,27 @@ router.post('/register', AuthController.handleRegister);
 router.post('/login', AuthController.handleLogin)
 router.get(
   '/google/auth', 
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
 );
 router.get(
-  '/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
+  '/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login', session: false }),
   AuthController.handleCallbackGoogle 
+);
+
+router.get(
+  '/github',
+  passport.authenticate('github', { 
+    scope: ['user:email', 'repo'], 
+    session: false 
+  })
+);
+
+router.get(
+  '/github/callback',
+  passport.authenticate('github', { failureRedirect: '/login', session: false }),
+  (req, res) => {
+    AuthController.handleCallbackGitHub(req, res); 
+  }
 );
 export default router;

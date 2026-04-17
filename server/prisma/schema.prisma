@@ -17,6 +17,8 @@ model User {
   email String  @unique
   password String?
   googleId  String?  @unique
+  githubId          String?   @unique  
+  githubAccessToken String?
   name  String?
   isVerified          Boolean   @default(false) 
   activationToken     String?   @unique         
