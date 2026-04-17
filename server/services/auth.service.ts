@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import type { User as PrismaUser } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { Resend } from "resend";
@@ -6,11 +7,11 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 dotenv.config();
 const resend = new Resend(process.env.RESEND_API_KEY);
-console.log(process.env.RESEND_API_KEY)
+console.log(process.env.RESEND_API_KEY);
 const AuthService = {
   async register(email: string, password: string, username: string) {
     const saltRounds: number = parseInt(process.env.SALTROUND!);
-    console.log("saltRounds" + saltRounds)
+    console.log("saltRounds" + saltRounds);
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -55,7 +56,7 @@ const AuthService = {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password!);
     if (!isPasswordValid) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
 
     if (!user.isVerified) {
@@ -92,6 +93,20 @@ const AuthService = {
     });
 
     return { message: "ยืนยันอีเมลสำเร็จ ตอนนี้คุณสามารถเข้าสู่ระบบได้แล้ว" };
+  },
+  generateAuthToken(user: PrismaUser): string {
+    const payload = {
+      userId: user.id,
+      email: user.email,
+    };
+
+    const token = jwt.sign(
+      payload,
+      process.env.JWT_SECRET || "fallback-super-secret-key",
+      { expiresIn: "7d" },
+    );
+
+    return token;
   },
 };
 

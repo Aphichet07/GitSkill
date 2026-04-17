@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type{ User as PrismaUser } from '@prisma/client';
 import AuthService from "../services/auth.service.js";
 import passport from "../lib/passport.js";
 
@@ -47,6 +48,33 @@ const AuthController = {
 
     res.redirect(`${FRONTEND_URL}/dashboard`);
   },
+
+  handleCallbackGitHub: (req: Request, res: Response) => {
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    try {
+      if (!req.user) {
+        return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
+      }
+
+      const user = req.user as PrismaUser;
+
+      const token = AuthService.generateAuthToken(user);
+
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
+      });
+
+      res.redirect(`${FRONTEND_URL}/dashboard`);
+
+    } catch (error) {
+      console.error('GitHub Auth Callback Error:', error);
+      res.redirect(`${FRONTEND_URL}/login?error=server_error`);
+    }
+  }
 };
 
 export default AuthController;
