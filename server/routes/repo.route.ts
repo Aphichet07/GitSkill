@@ -8,7 +8,8 @@ router.get("/test", (req, res) => {
 });
 
 router.get("/", verifyToken, RepoController.GetRepos);
-router.get("/:owner/:repo/extrct", verifyToken, RepoController.RepoInformation);
-router.get("/:owner/:repo/tree", verifyToken, RepoController.RepoTree);
+router.get("/me" ,verifyToken, RepoController.getUser)
+router.get("/:repoName", verifyToken, RepoController.RepoInformation);
+router.get("/:repoName/tree", verifyToken, RepoController.RepoTree);
 
 export default router;
