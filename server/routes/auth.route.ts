@@ -13,13 +13,13 @@ router.get(
   passport.authenticate('google', { scope: ['profile', 'email'], session: false })
 );
 router.get(
-  '/auth/google/callback',
+  '/google/callback',
   passport.authenticate('google', { failureRedirect: '/login', session: false }),
   AuthController.handleCallbackGoogle 
 );
 
 router.get(
-  '/auth/github',
+  '/github',
   passport.authenticate('github', { 
     scope: ['user:email', 'repo'], 
     session: false 
@@ -27,12 +27,10 @@ router.get(
 );
 
 router.get(
-  '/auth/github/callback',
+  '/github/callback',
   passport.authenticate('github', { failureRedirect: '/login', session: false }),
   (req, res) => {
-    // ล็อกอินผ่านแล้ว ทำการ Redirect หรือออก JWT เหมือนเดิมได้เลยครับ
-    // เช่น res.redirect('http://localhost:3000/dashboard');
-    AuthController.handleCallbackGitHub(req, res); // หรือส่งเข้า Controller ของคุณ
+    AuthController.handleCallbackGitHub(req, res); 
   }
 );
 export default router;
