@@ -1,19 +1,29 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
-interface IAnalysis extends Document {
-  postId: number;       // ID ที่อ้างอิงจาก Postgres
-  analysisResult: any;  // ข้อมูล JSON จากการวิเคราะห์
-  status: string;
+export interface IAnalysis extends Document {
+  projectId: Types.ObjectId; 
+  userId: number;
+  summation: string;
+  skills: {
+    language: string;
+    points: number;
+  }[];
+  recommendation: string;
+  deepcode: string;
   createdAt: Date;
 }
 
 const analysisSchema = new Schema<IAnalysis>({
-  postId: { type: Number, required: true, index: true },
-  analysisResult: { type: Schema.Types.Mixed, required: true }, 
-  status: { type: String, default: 'completed' },
+  projectId: { type: Schema.Types.ObjectId, ref: 'RepoGroup', required: true },
+  userId: { type: Number, required: true, index: true },
+  summation: { type: String, required: true },
+  skills: [{
+    language: { type: String, required: true },
+    points: { type: Number, required: true }
+  }],
+  recommendation: { type: String },
+  deepcode: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
-const Analysis = model<IAnalysis>('Analysis', analysisSchema);
-
-export default Analysis;
+export const Analysis = model<IAnalysis>('Analysis', analysisSchema);

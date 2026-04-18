@@ -12,16 +12,56 @@ datasource db {
   provider = "postgresql"
 }
 
-model User { 
-  id    Int     @id @default(autoincrement()) 
-  email String  @unique
-  password String?
-  googleId  String?  @unique
-  githubId          String?   @unique  
+model User {
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String?
+  googleId          String?   @unique
+  githubId          String?   @unique
   githubAccessToken String?
-  name  String?
-  isVerified          Boolean   @default(false) 
-  activationToken     String?   @unique         
-  tokenExpiresAt      DateTime?
-  createdAt           DateTime  @default(now())
-} 
+  name              String?
+  isVerified        Boolean   @default(false)
+  activationToken   String?   @unique
+  tokenExpiresAt    DateTime?
+
+  skills   UserSkill[]
+  projects UserProject[]
+
+  createdAt DateTime @default(now())
+}
+
+model UserSkill {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  language    String
+  points      Int      @default(0)
+  lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, language])
+  @@map("user_skills")
+}
+
+model UserProject {
+  id             Int            @id @default(autoincrement())
+  userId         Int            @map("user_id")
+  mongoProjectId String         @map("mongo_project_id")
+  projectName    String         @map("project_name")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  projectSkills  ProjectSkill[]
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_projects")
+}
+
+model ProjectSkill {
+  id            Int    @id @default(autoincrement())
+  userProjectId Int    @map("user_project_id")
+  language      String
+  points        Int
+
+  project UserProject @relation(fields: [userProjectId], references: [id], onDelete: Cascade)
+
+  @@map("project_skills")
+}
