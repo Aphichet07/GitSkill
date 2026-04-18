@@ -7,6 +7,6 @@ const router = Router();
 
 router.use('/auth', AuthRoute);
 router.use('/repo', RepoRoute)
-router.use('/analysis', AnalysisRoute)
+router.use('/project', AnalysisRoute)
 
 export default router;
