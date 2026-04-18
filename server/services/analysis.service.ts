@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RepoGroup } from "../models/RepoGroup.js";
-import { Analysis } from "../models/Analysis.js";
+import  {Analysis}  from "../models/Analysis.js";
 import { prisma } from "../lib/prisma.js";
 import type { IRepoGroup } from "../models/RepoGroup.js";
+import type { IAnalysis } from "../models/Analysis.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
