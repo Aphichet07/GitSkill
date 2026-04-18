@@ -32,7 +32,8 @@ const RepoService = {
           Accept: "application/vnd.github.v3+json",
         },
         params: {
-          sort: "updated"
+          sort: "updated",
+          per_page: 100,
         },
       });
       const repos = response.data.map((repo: any) => ({
@@ -115,7 +116,7 @@ const RepoService = {
           path: file.path, // path/to/file.ts
           type: file.type, // 'blob' (ไฟล์) หรือ 'tree' (โฟลเดอร์)
           size: file.size, // ขนาดไฟล์
-          url: file.url, // URL สำหรับดึงเนื้อหาไฟล์ 
+          url: file.url, // URL สำหรับดึงเนื้อหาไฟล์
         })),
       };
     } catch (err: any) {

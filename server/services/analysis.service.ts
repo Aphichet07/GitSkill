@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RepoGroup } from "../models/RepoGroup.js";
-import  {Analysis}  from "../models/Analysis.js";
+import { Analysis } from "../models/Analysis.js";
 import { prisma } from "../lib/prisma.js";
 import type { IRepoGroup } from "../models/RepoGroup.js";
 import type { IAnalysis } from "../models/Analysis.js";
@@ -46,6 +46,12 @@ const AnalysisService = {
       projectId,
       userId,
       ...analysisData,
+      isAnalyzed: true,
+    });
+
+    await RepoGroup.findByIdAndUpdate(projectId, {
+      isAnalyzed: true,
+      analysisResult: savedAnalysis._id,
     });
 
     const userProject = await prisma.userProject.upsert({

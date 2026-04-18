@@ -5,7 +5,7 @@ import { Types } from "mongoose";
 
 interface CreateProjectParams {
   groupName: string;
-  selectedRepos: string[]; // เช่น ["owner/repo-a", "owner/repo-c"]
+  selectedRepos: string[]; 
   userId: number;
 }
 
