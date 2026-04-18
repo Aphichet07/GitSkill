@@ -1,7 +1,7 @@
 
 import { Schema, model, Document } from 'mongoose';
 
-interface IRepoGroup extends Document {
+export interface IRepoGroup extends Document {
   groupName: string;    // เช่น "Data En"
   userId: number;       // ID ของ User (จาก Postgres)
   repos: string[];      // เก็บเป็น Full Name ของ Repo เช่น ["user/repo-A", "user/repo-C"]
