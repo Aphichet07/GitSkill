@@ -108,6 +108,24 @@ const AnalysisService = {
 
     return savedAnalysis;
   },
+
+async getAnalyze(projectId: string, userId: number) {
+    try {
+      const analysis = await Analysis.findOne({ 
+        projectId, 
+        userId 
+      }).sort({ createdAt: -1 });
+
+      if (!analysis) {
+        return null;
+      }
+
+      return analysis;
+    } catch (error) {
+      throw new Error("Error fetching analysis data");
+    }
+  },
+  
 };
 
 export default AnalysisService;

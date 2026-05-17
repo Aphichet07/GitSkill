@@ -1,11 +1,11 @@
 import connectMongo from "../lib/mongo.js";
 import { RepoGroup } from "../models/RepoGroup.js";
-import type { IRepoGroup } from '../models/RepoGroup.js';
+import type { IRepoGroup } from "../models/RepoGroup.js";
 import { Types } from "mongoose";
 
 interface CreateProjectParams {
   groupName: string;
-  selectedRepos: string[]; 
+  selectedRepos: string[];
   userId: number;
 }
 
@@ -48,7 +48,20 @@ const ProjectService = {
   },
   async getAllProjects(userId: number): Promise<IRepoGroup[]> {
     try {
-      return await RepoGroup.find({ userId }).sort({ createdAt: -1 }).lean();
+      const projects = await RepoGroup.find({ userId })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const projectsWithStatus = projects.map((project) => {
+        return {
+          ...project,
+          isAnalyzed: !!project.isAnalyzed || false,
+        };
+      });
+      
+      console.log(projectsWithStatus)
+
+      return projectsWithStatus as unknown as IRepoGroup[];
     } catch (error) {
       throw new Error("Could not fetch projects");
     }
@@ -58,9 +71,9 @@ const ProjectService = {
       const result = await RepoGroup.deleteOne({ _id: groupId, userId });
       return result.deletedCount > 0;
     } catch (error) {
-      throw new Error('Error deleting project');
+      throw new Error("Error deleting project");
     }
-  }
+  },
 };
 
 export default ProjectService;

@@ -55,7 +55,7 @@ const RepoService = {
 
   async InformRepo(accessToken: string, repo: string) {
     const owner = await this.getusername(accessToken);
-    console.log("owner -- >", owner);
+
     try {
       const res = await axios.get(
         `https://api.github.com/repos/${owner}/${repo}`,
@@ -124,6 +124,83 @@ const RepoService = {
       throw err;
     }
   },
+  async fetchFileContent(
+    token: string,
+    owner: string,
+    repo: string,
+    path: string,
+  ) {
+    try {
+      // ตรวจสอบว่า repo มี owner ติดมาด้วยหรือไม่ (เช่น "Aphichet/GitSkill")
+      // ถ้ามีแล้ว ให้ใช้ repo เลย แต่ถ้ามีแค่ชื่อ repo ให้เอา owner มาต่อ
+      const fullRepoName = repo.includes("/") ? repo : `${owner}/${repo}`;
+
+      const response = await axios.get(
+        `https://api.github.com/repos/${fullRepoName}/contents/${path}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        },
+      );
+
+      const data = response.data;
+
+      if (data.type === "file" && data.content) {
+        const decodedContent = Buffer.from(data.content, "base64").toString(
+          "utf-8",
+        );
+
+        return {
+          fileName: data.name,
+          path: data.path,
+          size: data.size,
+          content: decodedContent,
+        };
+      }
+
+      throw new Error("Target is not a file or content is empty");
+    } catch (error) {
+      throw error;
+    }
+  },
+  async getFullRepoCode(token: string, owner: string, repo: string) {
+    try {
+      const treeData = await this.RepoTree(token, repo);
+
+      const files = treeData.tree.filter(
+        (file: any) =>
+          file.type === "blob" &&
+          (file.path.endsWith(".ts") ||
+            file.path.endsWith(".js") ||
+            file.path.endsWith(".tsx")) &&
+          !file.path.includes("node_modules") &&
+          !file.path.includes("dist")
+      );
+
+      const topFiles = files.slice(0, 10);
+
+      const contents = await Promise.all(
+        topFiles.map(async (file: any) => {
+          const content = await this.fetchFileContent(
+            token,
+            owner, 
+            repo,
+            file.path
+          );
+          
+          return `--- File: ${file.path} ---\n${content.content}\n`;
+        })
+      );
+
+      return contents.join("\n");
+      
+    } catch (error: any) {
+      console.error("Error in getFullRepoCode:", error.message);
+      throw error;
+    }
+  }
 };
 
 export default RepoService;

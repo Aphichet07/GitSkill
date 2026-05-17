@@ -11,6 +11,7 @@ const ProjectController = {
       }
 
       const projects = await ProjectService.getAllProjects(userId);
+      console.log(projects)
       res.status(200).json({ success: true, data: projects });
     } catch (err) {
       console.log(err);

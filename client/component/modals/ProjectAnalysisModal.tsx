@@ -139,7 +139,7 @@ export function ProjectAnalysisModal({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer
         <div className="p-6 bg-slate-50 border-t flex justify-end rounded-b-3xl">
           <Button
             onClick={onClose}
@@ -147,7 +147,7 @@ export function ProjectAnalysisModal({
           >
             ปิดหน้าต่าง
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

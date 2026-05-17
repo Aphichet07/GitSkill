@@ -106,6 +106,42 @@ function ProjectPage() {
     }
   };
 
+  const fetchAnalyze = async (projectId: string, e: React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    setAnalyzingId(projectId);
+    console.log(projectId)
+
+
+    try {
+      const res = await axios.get(
+        `http://localhost:8000/analysis/${projectId}/analyze`,
+        {
+          params: {
+            userId: currentUserId,
+          },
+        },
+      );
+
+      if (res.data.success) {
+        setAnalyzeData(res.data.data);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message;
+      console.error("Analysis Fetch Error:", errorMsg);
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+
+  const handleDetailClick = async (project: any, e: React.MouseEvent) => {
+    e.preventDefault();
+
+    openProjectDetails(project, e);
+
+    await fetchAnalyze(project._id, e);
+  };
+
   const openProjectDetails = (project: ProjectData, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedProject(project);
@@ -248,7 +284,7 @@ function ProjectPage() {
                     <Button
                       variant="ghost"
                       className="flex-1 text-gray-600 rounded-xl hover:bg-blue-50/50 hover:text-[#26318c]"
-                      onClick={(e) => openProjectDetails(project, e)}
+                      onClick={(e) => handleDetailClick(project, e)}
                     >
                       ดูรายละเอียด
                     </Button>
