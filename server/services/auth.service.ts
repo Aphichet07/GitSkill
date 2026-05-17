@@ -5,9 +5,10 @@ import bcrypt from "bcrypt";
 import { Resend } from "resend";
 import dotenv from "dotenv";
 import crypto from "crypto";
+
 dotenv.config();
 const resend = new Resend(process.env.RESEND_API_KEY);
-console.log(process.env.RESEND_API_KEY);
+
 const AuthService = {
   async register(email: string, password: string, username: string) {
     const saltRounds: number = parseInt(process.env.SALTROUND!);
@@ -71,6 +72,13 @@ const AuthService = {
 
     const { password: _, activationToken, tokenExpiresAt, ...safeUser } = user;
     return { message: "เข้าสู่ระบบสำเร็จ", user: safeUser, accessToken: token };
+  },
+  async logout(userId?: string) {
+    // if (userId) {
+    //   await prisma.session.deleteMany({ where: { userId } });
+    // }
+
+    return { success: true };
   },
 
   async verifyEmail(token: string) {

@@ -52,7 +52,7 @@ function Dashboard() {
 
   const currentUserId = 2;
 
-  // ตรวจสอบสถานะ Login เมื่อโหลดหน้าเว็บ
+  // ตรวจสอบสถานะ Login 
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -101,7 +101,7 @@ function Dashboard() {
 
   const handleProjectCreatedSuccess = () => {
     setSelectedIds([]);
-    router.push("/project");
+    router.push("/dashboard/project");
   };
 
   const totalPages = Math.ceil(repoList.length / itemsPerPage);
@@ -132,7 +132,7 @@ function Dashboard() {
           // ยังไม่ได้ Login
           <div className="flex flex-col items-center py-20 text-center m-auto">
             <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">🚀</span>
+              <span className="text-2xl"></span>
             </div>
             <h2 className="text-xl font-semibold mb-2">Connect your GitHub</h2>
             <p className="text-gray-500 mb-6 max-w-sm">

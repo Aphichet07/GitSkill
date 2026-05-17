@@ -9,6 +9,8 @@ router.get("/test", (req, res) => {
 
 router.get("/", verifyToken, RepoController.GetRepos);
 router.get("/me" ,verifyToken, RepoController.getUser)
+router.get("/:owner/:repoName/full-code", RepoController.GetFullRepoCode);
+router.get("/:repoName/content", RepoController.GetFileContent)
 router.get("/:repoName", verifyToken, RepoController.RepoInformation);
 router.get("/:repoName/tree", verifyToken, RepoController.RepoTree);
 
