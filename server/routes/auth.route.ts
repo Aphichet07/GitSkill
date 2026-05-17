@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import jwt from "jsonwebtoken"
 import AuthController from "../controllers/auth.controller.js";
 import passport from "../lib/passport.js";
 const router = Router();
@@ -8,12 +9,24 @@ router.get("/", (req, res) => {
   res.json({ message: "Welcome to auth" });
 });
 router.get("/status", (req: Request, res: Response) => {
-  if (req.isAuthenticated && req.isAuthenticated()) {
+  try {
+    const token = req.cookies.token;
+    console.log("Cookies : ",token)
+    if (!token) {
+      return res.status(200).json({
+        isAuthenticated: false,
+        user: null,
+      });
+    }
+
+    const decodedUser = jwt.verify(token, process.env.JWT_SECRET as string);
+
     return res.status(200).json({
       isAuthenticated: true,
-      user: req.user,
+      user: decodedUser,
     });
-  } else {
+
+  } catch (error) {
     return res.status(200).json({
       isAuthenticated: false,
       user: null,

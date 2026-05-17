@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -54,12 +55,48 @@ function ProjectPage() {
   );
   const [analyzeData, setAnalyzeData] = useState<any | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
+  const [isLoginGithub, setIsLoginGithub] = useState<boolean>(false);
 
-  useEffect(() => {
-    fetchProjects();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+
+useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/auth/status", {
+          withCredentials: true,
+        });
+
+        console.log("Auth Status: ", res.data);
+
+        if (res.data.isAuthenticated) {
+          setIsLoginGithub(true);
+          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          setCurrentUserId(userId);
+        } else {
+          setIsLoginGithub(false);
+          setCurrentUserId(null);
+        }
+      } catch (error) {
+        console.error("Auth Status Error:", error);
+        setIsLoginGithub(false);
+        setCurrentUserId(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkAuthStatus();
   }, []);
 
-  const currentUserId = 2;
+  useEffect(() => {
+    if (!isCheckingAuth && currentUserId !== null) {
+      fetchProjects();
+    } else if (!isCheckingAuth && currentUserId === null) {
+      setProjects([]);
+      setLoading(false);
+    }
+  }, [currentUserId, isCheckingAuth]);
 
   const fetchProjects = async () => {
     try {
@@ -110,8 +147,7 @@ function ProjectPage() {
     if (e) e.preventDefault();
 
     setAnalyzingId(projectId);
-    console.log(projectId)
-
+    console.log(projectId);
 
     try {
       const res = await axios.get(
@@ -140,6 +176,30 @@ function ProjectPage() {
     openProjectDetails(project, e);
 
     await fetchAnalyze(project._id, e);
+  };
+
+  const handleDeleteProject = async (
+    projectId: string,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation();
+    if (!window.confirm("คุณต้องการลบโปรเจกต์นี้ใช่หรือไม่?")) {
+      return;
+    }
+
+    try {
+      console.log("Project ID : ", projectId);
+      await axios.delete(`http://localhost:8000/project/${projectId}`, {
+        withCredentials: true,
+      });
+
+      fetchProjects();
+
+      alert("ลบโปรเจกต์เรียบร้อยแล้ว");
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("เกิดข้อผิดพลาดในการลบโปรเจกต์");
+    }
   };
 
   const openProjectDetails = (project: ProjectData, e: React.MouseEvent) => {
@@ -235,7 +295,7 @@ function ProjectPage() {
                   className="hover:border-[#26318c]/40 hover:shadow-md transition-all rounded-2xl border-gray-200 flex flex-col cursor-pointer relative"
                   onClick={() => router.push(`/project/${project._id}`)}
                 >
-                  <div className="absolute top-4 right-4 z-10">
+                  <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                     {project.isAnalyzed ? (
                       <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2 py-1">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -249,6 +309,14 @@ function ProjectPage() {
                         Pending
                       </Badge>
                     )}
+
+                    <button
+                      onClick={(e) => handleDeleteProject(project._id, e)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete Project"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
                   <CardHeader className="pb-3">
