@@ -11,7 +11,7 @@ const ProjectController = {
       }
 
       const projects = await ProjectService.getAllProjects(userId);
-      console.log(projects)
+      console.log(projects);
       res.status(200).json({ success: true, data: projects });
     } catch (err) {
       console.log(err);
@@ -54,18 +54,23 @@ const ProjectController = {
       res.status(500).json({ message: err });
     }
   },
-
-  async deleteUserProject(req: Request, res: Response) {
+async deleteUserProject(req: Request, res: Response) {
     try {
-      const { id } = req.params; 
-      const userId = Number(req.body.userId); 
+      const { id } = req.params;
 
-      if (!id || typeof id !== 'string' || isNaN(userId)) {
-      return res
-        .status(400)
-        .json({ message: "Missing or invalid Project ID or User ID" });
-    }
+      const userPayload = req.userPayload;
+      
+      const userId = Number(userPayload?.userId); 
+      
+      console.log("User in Delete Project:", userPayload);
 
+      if (!id || typeof id !== "string" || isNaN(userId)) {
+        return res
+          .status(400)
+          .json({ message: "Missing or invalid Project ID or User ID" });
+      }
+      
+      console.log("User in delete: ", userId);
       const isDeleted = await ProjectService.deleteProject(id, userId);
 
       if (!isDeleted) {

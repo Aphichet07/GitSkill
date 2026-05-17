@@ -14,8 +14,7 @@ declare global {
 
 const verifyToken = (req: Request, res: Response, next: NextFunction) => {
   const token =
-    req.cookies?.access_token || req.headers.authorization?.split(" ")[1];
-
+    req.cookies?.token || req.headers.authorization?.split(" ")[1];
   if (!token) {
     return res
       .status(401)
@@ -28,7 +27,6 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
       userId: number;
       email: string;
     };
-
     req.userPayload = decoded;
 
     next();

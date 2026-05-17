@@ -35,7 +35,7 @@ function Sidebar() {
         <nav className="flex-1 px-3 py-6 border-t border-[#eaeaea]">
           <div className="flex flex-col gap-y-1">
             <Link
-              href="/dashboard/overview"
+              href="/dashboard"
               className="group flex items-center h-11 px-4 rounded-xl text-[#26318c] hover:bg-white/50 hover:shadow-sm transition-all duration-200"
             >
               <Binoculars

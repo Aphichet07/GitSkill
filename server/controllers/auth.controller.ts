@@ -35,6 +35,12 @@ const AuthController = {
       if (!user) {
         res.status(500).json({ message: "ไม่มี user นี้ในระบบ" });
       }
+      res.cookie("token", user.accessToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000, // 1 วัน
+      });
       res
         .status(200)
         .json({ message: "Login Success", success: true, data: user });
