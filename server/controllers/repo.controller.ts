@@ -171,7 +171,6 @@ const RepoController = {
 
       res.status(200).json({ 
         message: "Success", 
-        // แนบข้อมูลโค้ดกลับไป (จะเป็น string ยาวๆ ที่ต่อกันด้วย --- File: ... ---)
         data: fullCode 
       });
 
