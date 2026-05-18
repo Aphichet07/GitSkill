@@ -11,6 +11,7 @@ import {
   Sparkles,
   CheckCircle2,
   Trash2,
+  Trophy,
 } from "lucide-react";
 import {
   Card,
@@ -41,6 +42,7 @@ interface ProjectData {
   repos: RepoData[];
   createdAt: string;
   isAnalyzed: boolean;
+  grade?: string; 
   analysisResult?: any;
 }
 
@@ -60,19 +62,17 @@ function ProjectPage() {
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-
-useEffect(() => {
+  useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         const res = await axios.get("http://localhost:8000/auth/status", {
           withCredentials: true,
         });
 
-        console.log("Auth Status: ", res.data);
-
         if (res.data.isAuthenticated) {
           setIsLoginGithub(true);
-          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          const userId =
+            res.data.user?.id || res.data.userId || res.data.user?.userId;
           setCurrentUserId(userId);
         } else {
           setIsLoginGithub(false);
@@ -118,25 +118,24 @@ useEffect(() => {
 
   const handleAnalyze = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log("projectId --> ", projectId);
     setAnalyzingId(projectId);
 
     try {
       const res = await axios.post(
-        `http://localhost:8000/analysis/${projectId}/analyze`,
+        `http://localhost:8000/score/group/${projectId}`,
         { userId: currentUserId },
         { withCredentials: true },
       );
-
-      setAnalyzeData(res.data.data);
-
-      alert("วิเคราะห์เสร็จสิ้น! (สามารถนำ data ไปแสดงผลต่อได้)");
-
+      console.log("G : ", res.data.result);
+      setAnalyzeData(res.data.result);
+      alert("วิเคราะห์โปรเจกต์แบบกลุ่มเสร็จสิ้น!");
       await fetchProjects();
     } catch (err: any) {
       console.error("Analyze Error:", err);
       alert(
-        err.response?.data?.message || "เกิดข้อผิดพลาดในการวิเคราะห์ข้อมูล",
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "เกิดข้อผิดพลาดในการวิเคราะห์ข้อมูล",
       );
     } finally {
       setAnalyzingId(null);
@@ -147,24 +146,21 @@ useEffect(() => {
     if (e) e.preventDefault();
 
     setAnalyzingId(projectId);
-    console.log(projectId);
 
     try {
       const res = await axios.get(
-        `http://localhost:8000/analysis/${projectId}/analyze`,
-        {
-          params: {
-            userId: currentUserId,
-          },
-        },
-      );
+        `http://localhost:8000/score/${projectId}/analyze`,
 
+        { params: { userId: currentUserId }, withCredentials: true },
+      );
       if (res.data.success) {
         setAnalyzeData(res.data.data);
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message;
-      console.error("Analysis Fetch Error:", errorMsg);
+      console.error(
+        "Analysis Fetch Error:",
+        error.response?.data?.message || error.message,
+      );
     } finally {
       setAnalyzingId(null);
     }
@@ -172,9 +168,7 @@ useEffect(() => {
 
   const handleDetailClick = async (project: any, e: React.MouseEvent) => {
     e.preventDefault();
-
     openProjectDetails(project, e);
-
     await fetchAnalyze(project._id, e);
   };
 
@@ -183,18 +177,13 @@ useEffect(() => {
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
-    if (!window.confirm("คุณต้องการลบโปรเจกต์นี้ใช่หรือไม่?")) {
-      return;
-    }
+    if (!window.confirm("คุณต้องการลบโปรเจกต์นี้ใช่หรือไม่?")) return;
 
     try {
-      console.log("Project ID : ", projectId);
       await axios.delete(`http://localhost:8000/project/${projectId}`, {
         withCredentials: true,
       });
-
       fetchProjects();
-
       alert("ลบโปรเจกต์เรียบร้อยแล้ว");
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -217,6 +206,61 @@ useEffect(() => {
     return new Date(dateString).toLocaleDateString("th-TH", options);
   };
 
+  const getGradeBadge = (project: ProjectData) => {
+    console.log("Project Data: ", project);
+    if (!project.isAnalyzed) {
+      return (
+        <Badge
+          variant="secondary"
+          className="text-gray-500 px-3 py-1 font-medium"
+        >
+          Pending
+        </Badge>
+      );
+    }
+
+    const grade = project.grade || project.analysisResult?.grade;
+
+    switch (grade) {
+      case "S":
+        return (
+          <Badge className="bg-linear-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
+            <Trophy className="w-3 h-3 mr-1" /> Tier S
+          </Badge>
+        );
+      case "A":
+        return (
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none px-3 py-1 font-bold">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Tier A
+          </Badge>
+        );
+      case "B":
+        return (
+          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 py-1 font-bold">
+            Tier B
+          </Badge>
+        );
+      case "C":
+        return (
+          <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-none px-3 py-1 font-bold">
+            Tier C
+          </Badge>
+        );
+      case "F":
+        return (
+          <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-none px-3 py-1 font-bold">
+            Tier F
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none px-3 py-1 font-medium">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Analyzed
+          </Badge>
+        );
+    }
+  };
+
   return (
     <div className="max-w-8xl">
       <header className="mb-8">
@@ -227,7 +271,6 @@ useEffect(() => {
       </header>
 
       <div className="bg-white p-8 rounded-3xl border border-[#eaeaea] shadow-sm min-h-125 flex flex-col">
-        {/* Loading */}
         {loading && (
           <div className="flex-1 flex flex-col items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#26318c] mb-4"></div>
@@ -235,7 +278,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Error */}
         {!loading && error && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
             <div className="text-red-500 mb-4 bg-red-50 p-4 rounded-full">
@@ -254,7 +296,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* ไม่มีโปรเจกต์ */}
         {!loading && !error && projects.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
@@ -276,7 +317,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Data Loaded */}
         {!loading && !error && projects.length > 0 && (
           <>
             <div className="flex justify-between items-end mb-6 pb-4 border-b">
@@ -296,19 +336,7 @@ useEffect(() => {
                   onClick={() => router.push(`/project/${project._id}`)}
                 >
                   <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                    {project.isAnalyzed ? (
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2 py-1">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Analyzed
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className="text-gray-500 px-2 py-1"
-                      >
-                        Pending
-                      </Badge>
-                    )}
+                    {getGradeBadge(project)}
 
                     <button
                       onClick={(e) => handleDeleteProject(project._id, e)}

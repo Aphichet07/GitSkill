@@ -51,7 +51,7 @@ model UserProject {
   createdAt      DateTime       @default(now()) @map("created_at")
   projectSkills  ProjectSkill[]
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  projectAnalysis Project_analysis?
   @@map("user_projects")
 }
 
@@ -64,4 +64,28 @@ model ProjectSkill {
   project UserProject @relation(fields: [userProjectId], references: [id], onDelete: Cascade)
 
   @@map("project_skills")
+}
+
+model Project_analysis {
+  id                 Int           @id @default(autoincrement())
+  user_project_id    Int           @unique
+  
+  grade              String        @db.VarChar(2) // S, A, B, C, F
+  final_score        Int
+  
+  doc_score          Int
+  arch_score         Int
+  test_ci_score      Int
+  clean_code_score   Int
+  efficiency_score   Int
+  security_score     Int
+  habit_score        Int
+
+  detailed_stats     Json?
+  
+  insight            String?       @db.Text
+  
+  analyzed_at        DateTime      @default(now()) @db.Timestamp(6)
+
+  project            UserProject  @relation(fields: [user_project_id], references: [id], onDelete: Cascade)
 }

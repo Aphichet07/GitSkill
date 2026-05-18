@@ -1,5 +1,10 @@
 import axios from "axios";
 import { prisma } from "../lib/prisma.js";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import { randomUUID } from "crypto";
+import AdmZip from "adm-zip";
 
 const RepoService = {
   async getusername(accessToken: string) {
@@ -131,8 +136,6 @@ const RepoService = {
     path: string,
   ) {
     try {
-      // ตรวจสอบว่า repo มี owner ติดมาด้วยหรือไม่ (เช่น "Aphichet/GitSkill")
-      // ถ้ามีแล้ว ให้ใช้ repo เลย แต่ถ้ามีแค่ชื่อ repo ให้เอา owner มาต่อ
       const fullRepoName = repo.includes("/") ? repo : `${owner}/${repo}`;
 
       const response = await axios.get(
@@ -176,7 +179,7 @@ const RepoService = {
             file.path.endsWith(".js") ||
             file.path.endsWith(".tsx")) &&
           !file.path.includes("node_modules") &&
-          !file.path.includes("dist")
+          !file.path.includes("dist"),
       );
 
       const topFiles = files.slice(0, 10);
@@ -185,19 +188,93 @@ const RepoService = {
         topFiles.map(async (file: any) => {
           const content = await this.fetchFileContent(
             token,
-            owner, 
+            owner,
             repo,
-            file.path
+            file.path,
           );
-          
+
           return `--- File: ${file.path} ---\n${content.content}\n`;
-        })
+        }),
       );
 
       return contents.join("\n");
-      
     } catch (error: any) {
       console.error("Error in getFullRepoCode:", error.message);
+      throw error;
+    }
+  },
+  async fetchRawFileContent(
+    token: string,
+    owner: string,
+    repo: string,
+    branch: string,
+    filePath: string,
+  ) {
+    try {
+      const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3.raw",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async downloadRepoForAnalysis(token: string, owner: string, repo: string) {
+    try {
+      // ดึงข้อมูล Repo โดยใช้ owner จาก Parameter โดยตรง 
+      const infoRes = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+      const branch = infoRes.data.default_branch;
+
+      // สร้างโฟลเดอร์ชั่วคราว
+      const tempDir = path.join(os.tmpdir(), `wallet-${randomUUID()}`);
+      const zipFilePath = path.join(tempDir, `${repo}.zip`);
+      const extractPath = path.join(tempDir, "extracted");
+
+      await fs.mkdir(tempDir, { recursive: true });
+
+      // โหลด .zip ของโค้ดทั้งโปรเจกต์
+      const zipUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${branch}`;
+      const response = await axios.get(zipUrl, {
+        responseType: "arraybuffer",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      await fs.writeFile(zipFilePath, response.data);
+
+      // แตกไฟล์
+      const zip = new AdmZip(zipFilePath);
+      zip.extractAllTo(extractPath, true);
+
+      // หาโฟลเดอร์ชั้นในสุดที่แตกออกมา
+      const extractedFolders = await fs.readdir(extractPath);
+      if (!extractedFolders[0]) {
+        throw new Error("Repository is empty");
+      }
+      const sourceCodePath = path.join(extractPath, extractedFolders[0]);
+
+      return {
+        repoInfo: infoRes.data, // คืนค่าข้อมูล Repo กลับไปด้วย
+        sourceCodePath, 
+        tempDirToCleanUp: tempDir, 
+      };
+    } catch (error: any) {
+      console.error("Download Repo Error:", error.message);
       throw error;
     }
   }
