@@ -43,11 +43,11 @@ function TextSlide() {
           style={{ animation: "scrollLeft 30s linear infinite" }}
         >
           <h1 className="text-[#a287d4] tracking-widest text-[250px] uppercase font-bold whitespace-nowrap pr-16">
-            Code-Driven. Friendly. Insightful. Clear.
+            Code-Driven Friendly Insightful Clear
           </h1>
 
           <h1 className="text-[#a287d4] tracking-widest text-[250px] uppercase font-bold whitespace-nowrap pr-16">
-            Code-Driven. Friendly. Insightful. Clear.
+            analyze visualize impress
           </h1>
         </div>
 
