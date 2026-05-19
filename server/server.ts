@@ -1,26 +1,31 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import session from 'express-session';
-import cookieParser from 'cookie-parser';
+import session from "express-session";
+import cookieParser from "cookie-parser";
 import router from "./routes/route.js";
 import passport from "./lib/passport.js";
 import connectMongo from "./lib/mongo.js";
+import { swaggerSpec } from "./lib/swagger.js";
+import swaggerUi from 'swagger-ui-express';
 
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'my-super-secret-key',
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "my-super-secret-key",
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(passport.initialize());
 app.use(passport.session());
-connectMongo()
+connectMongo();
 
 app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
