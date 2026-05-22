@@ -6,6 +6,7 @@ import { RepoGroup } from "../models/RepoGroup.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { performance } from "perf_hooks";
 
 const ScoreController = {
   async AnalyzeGroup(req: Request, res: Response) {
@@ -61,6 +62,9 @@ const ScoreController = {
       );
       console.log(`สร้าง Master Workspace สำหรับวิเคราะห์: ${masterWorkspace}`);
 
+      console.log("\n--- เริ่มทดสอบความเร็วแบบเก่า ---");
+      const oldWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), `bench_old_${Date.now()}_`));
+      const startOld = performance.now();
       for (const repoData of repoGroup.repos) {
         // ดึง owner/repo ออกมาจาก URL ของ Github (เช่น https://github.com/Aphichet07/GitSkill)
         const urlParts = repoData.url.split("/");
@@ -90,6 +94,58 @@ const ScoreController = {
           );
         }
       }
+      const endOld = performance.now();
+      const timeOldSec = ((endOld - startOld) / 1000).toFixed(2);
+      console.log(`แบบเก่าใช้เวลา: ${timeOldSec} วินาที`);
+
+      // console.log("\n--- เริ่มทดสอบความเร็วแบบใหม่ ---");
+      masterWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), `portfolio_master_${Date.now()}_`));
+      const startNew = performance.now();
+
+      const downloadPromises = repoGroup.repos.map(async (repoData) => {
+        const urlParts = repoData.url.split("/");
+        const repoOwner = urlParts[urlParts.length - 2];
+        const repoName = urlParts[urlParts.length - 1];
+
+        if (!repoOwner) return;
+        if (!repoName) return;
+        if (!user.githubAccessToken) {
+        return res
+          .status(401)
+          .json({
+            error: "ไม่พบ GitHub Token กรุณาล็อกอินด้วย GitHub อีกครั้ง",
+          });
+      }
+
+        try {
+          const { sourceCodePath, tempDirToCleanUp } = await RepoService.downloadRepoForAnalysis(
+            user.githubAccessToken, repoOwner, repoName
+          );
+          await fs.cp(sourceCodePath, path.join(masterWorkspace, repoName), { recursive: true });
+          await fs.rm(tempDirToCleanUp, { recursive: true, force: true });
+        } catch (err) {
+          console.error(`❌ ข้ามการดาวน์โหลด ${repoName}:`, err);
+        }
+      });
+
+      await Promise.all(downloadPromises);
+
+      const endNew = performance.now();
+      const timeNewSec = ((endNew - startNew) / 1000).toFixed(2);
+      console.log(`แบบใหม่ใช้เวลา: ${timeNewSec} วินาที\n`);
+
+      // สรุปผลการเปรียบเทียบ
+      const diffSec = ((endOld - startOld) - (endNew - startNew)) / 1000;
+      const percentFaster = (((endOld - startOld) - (endNew - startNew)) / (endOld - startOld) * 100).toFixed(0);
+      
+      const benchmarkStats = {
+        sequential_time_seconds: Number(timeOldSec),
+        parallel_time_seconds: Number(timeNewSec),
+        time_saved_seconds: Number(diffSec.toFixed(2)),
+        percentage_faster: Number(percentFaster)
+      };
+
+      console.log(`แบบใหม่ประหยัดเวลาไป ${diffSec.toFixed(2)} วินาที (เร็วขึ้น ${percentFaster}%)`);
 
       console.log(
         `กำลังวิเคราะห์โค้ดภาพรวมของกลุ่ม: ${repoGroup.groupName}...`,
