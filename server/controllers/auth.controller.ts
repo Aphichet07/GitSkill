@@ -44,8 +44,17 @@ const AuthController = {
       res
         .status(200)
         .json({ message: "Login Success", success: true, data: user });
-    } catch (err) {
-      console.log(err);
+    } catch (err: any) {
+      console.log("[Login Error]:", err.message);
+
+      const errorMessage = err.message || "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์";
+
+      if (
+        errorMessage === "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ||
+        errorMessage === "กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ"
+      ) {
+        return res.status(401).json({ message: errorMessage });
+      }
       res.status(500).json({ message: err });
     }
   },

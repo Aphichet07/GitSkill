@@ -11,6 +11,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const AuthService = {
   async register(email: string, password: string, username: string) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const saltRounds: number = parseInt(process.env.SALTROUND!);
     console.log("saltRounds" + saltRounds);
     const existingUser = await prisma.user.findUnique({
@@ -37,6 +38,7 @@ const AuthService = {
     });
     const activationLink = `http://localhost:3000/api/auth/verify-email?token=${activationToken}`;
 
+    console.log("Email : ", newUser.email)
     await resend.emails.send({
       from: "onboarding@resend.dev",
       to: newUser.email,
