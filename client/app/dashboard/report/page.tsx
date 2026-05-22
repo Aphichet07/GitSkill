@@ -16,7 +16,7 @@ function ReportPage() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res = await axios.get("http://localhost:8000/auth/status", {
+        const res : any = await axios.get("http://localhost:8000/auth/status", {
           withCredentials: true,
         });
 
