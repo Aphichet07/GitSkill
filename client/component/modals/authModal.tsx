@@ -33,17 +33,15 @@ function AuthModal({ onClose }: AuthModalProps) {
 
       const res = await axios.post(
         `http://localhost:8000${endpoint}`,
-        requestBody, 
+        requestBody,
         {
-          withCredentials: true, 
+          withCredentials: true,
         },
       );
 
-      const data = res.data;
-
+      // --- ส่วนสำเร็จ (Success) ---
       if (isLoggingIn) {
         setMessage({ type: "success", text: "เข้าสู่ระบบสำเร็จ!" });
-
         setTimeout(() => {
           onClose();
           router.push("/dashboard");
@@ -51,7 +49,7 @@ function AuthModal({ onClose }: AuthModalProps) {
       } else {
         setMessage({
           type: "success",
-          text: "สมัครสมาชิกสำเร็จ! ระบบกำลังพาไปหน้าเข้าสู่ระบบ...",
+          text: "สมัครสมาชิกสำเร็จ! กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ...",
         });
         setTimeout(() => {
           setIsLoggingIn(true);
@@ -60,11 +58,44 @@ function AuthModal({ onClose }: AuthModalProps) {
         }, 1500);
       }
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.detail ||
-        error.message ||
-        "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+      console.error("Backend Error Data:", error.response?.data); 
+
+      const errorData = error.response?.data;
+      let errorMessage = "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์"; 
+
+      if (errorData) {
+        let rawError = errorData.message || errorData.detail || error.message;
+
+        if (typeof rawError === "object" && rawError !== null) {
+          rawError =
+            rawError.message || rawError.error || JSON.stringify(rawError);
+        }
+
+        const errString = String(rawError).toLowerCase();
+
+        if (
+          errString.includes("verify") ||
+          errString.includes("unverified") ||
+          errString.includes("not verified")
+        ) {
+          errorMessage =
+            "กรุณายืนยันอีเมลในกล่องจดหมายของคุณก่อนเข้าสู่ระบบครับ";
+        } else if (
+          errString.includes("password") ||
+          errString.includes("email") ||
+          errString.includes("invalid") ||
+          errString.includes("credential") ||
+          errString.includes("incorrect") ||
+          errString.includes("not found")
+        ) {
+          errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
+        } else {
+          errorMessage =
+            typeof rawError === "string"
+              ? rawError
+              : "เกิดข้อผิดพลาดในการดำเนินการ";
+        }
+      }
 
       setMessage({ type: "error", text: errorMessage });
     } finally {
