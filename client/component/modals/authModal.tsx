@@ -31,7 +31,7 @@ function AuthModal({ onClose }: AuthModalProps) {
         ? { email, password }
         : { email, password, username };
 
-      const res = await axios.post(
+      const res : any = await axios.post(
         `http://localhost:8000${endpoint}`,
         requestBody,
         {
