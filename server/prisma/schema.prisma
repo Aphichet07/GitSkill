@@ -26,6 +26,7 @@ model User {
 
   skills   UserSkill[]
   projects UserProject[]
+  badges           UserBadge[]
 
   createdAt DateTime @default(now())
 }
@@ -52,6 +53,7 @@ model UserProject {
   projectSkills  ProjectSkill[]
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectAnalysis Project_analysis?
+  badges           ProjectBadge[]
   @@map("user_projects")
 }
 
@@ -88,4 +90,46 @@ model Project_analysis {
   analyzed_at        DateTime      @default(now()) @db.Timestamp(6)
 
   project            UserProject  @relation(fields: [user_project_id], references: [id], onDelete: Cascade)
+}
+
+model Badge {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // เช่น "Documentarian", "React Ninja"
+  description String   // คำอธิบายเกณฑ์การได้ Badge
+  iconUrl     String?  // URL ของรูปภาพห
+  category    String   // จัดกลุ่ม Badge เช่น "TECH_MASTERY", "BEST_PRACTICE", "ACTIVITY"
+  tier        String?  // ระดับของ Badge (เช่น Gold, Silver, Bronze)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  userBadges    UserBadge[]
+  projectBadges ProjectBadge[]
+
+  @@map("badges") 
+}
+
+model UserBadge {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  badgeId   Int      @map("badge_id")
+  earnedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model ProjectBadge {
+  id              Int      @id @default(autoincrement())
+  userProjectId   Int      @map("user_project_id")
+  badgeId         Int      @map("badge_id")
+  earnedAt        DateTime @default(now())
+
+  project         UserProject @relation(fields: [userProjectId], references: [id], onDelete: Cascade)
+  badge           Badge       @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userProjectId, badgeId])
+  @@map("project_badges")
 }
