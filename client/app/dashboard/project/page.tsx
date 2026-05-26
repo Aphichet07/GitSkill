@@ -5,81 +5,108 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import {
   FolderGit2,
-  Calendar,
-  GitPullRequestDraft,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  Trash2,
+  BarChart3,
+  ShieldCheck,
+  Zap,
+  FileCode2,
+  GitMerge,
+  TestTube2,
+  BookOpen,
+  Wrench,
   Trophy,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  GitPullRequestDraft,
+  Calendar,
 } from "lucide-react";
 import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ProjectAnalysisModal } from "@/component/modals/ProjectAnalysisModal";
+import { Button } from "@/components/ui/button";
 
-interface RepoData {
-  id: number;
-  name: string;
-  description: string | null;
-  url: string;
-  language: string;
-  stars: number;
-  updatedAt: string;
+import type { ProjectData, ScoreAnalysis, ProjectInsight } from "../project/insight.types";
+import { SCORE_METRICS } from "../project/insight.types";
+
+
+function GradeBadge({ grade }: { grade: string | undefined }) {
+  switch (grade) {
+    case "S":
+      return (
+        <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
+          <Trophy className="w-3 h-3 mr-1" /> Tier S
+        </Badge>
+      );
+    case "A":
+      return (
+        <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none px-3 py-1 font-bold">
+          <CheckCircle2 className="w-3 h-3 mr-1" /> Tier A
+        </Badge>
+      );
+    case "B":
+      return (
+        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 py-1 font-bold">
+          Tier B
+        </Badge>
+      );
+    case "C":
+      return (
+        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-none px-3 py-1 font-bold">
+          Tier C
+        </Badge>
+      );
+    default:
+      return null;
+  }
 }
 
-interface ProjectData {
-  _id: string;
-  groupName: string;
-  userId: number;
-  repos: RepoData[];
-  createdAt: string;
-  isAnalyzed: boolean;
-  grade?: string;
-  analysisResult?: any;
-}
-
-function ProjectPage() {
-  const router = useRouter();
-  const [projects, setProjects] = useState<ProjectData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<ProjectData | null>(
-    null,
+function ScoreBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = Math.min(100, Math.round((value / max) * 100));
+  return (
+    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+      <div
+        className={`h-1.5 rounded-full ${color} transition-all duration-500`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
   );
-  const [analyzeData, setAnalyzeData] = useState<any | null>(null);
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
-  const [isLoginGithub, setIsLoginGithub] = useState<boolean>(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+}
 
+
+function InsightPage() {
+  const router = useRouter();
+
+  const [insights, setInsights]             = useState<ProjectInsight[]>([]);
+  const [pageLoading, setPageLoading]       = useState(true);
+  const [error, setError]                   = useState("");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [currentUserId, setCurrentUserId]   = useState<number | null>(null);
+  const [expandedId, setExpandedId]         = useState<string | null>(null);
+
+  //ออด check
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res: any = await axios.get("http://localhost:8000/auth/status", {
+        const res = await axios.get("http://localhost:8000/auth/status", {
           withCredentials: true,
         });
-
         if (res.data.isAuthenticated) {
-          setIsLoginGithub(true);
           const userId =
             res.data.user?.id || res.data.userId || res.data.user?.userId;
           setCurrentUserId(userId);
         } else {
-          setIsLoginGithub(false);
           setCurrentUserId(null);
         }
-      } catch (error) {
-        console.error("Auth Status Error:", error);
-        setIsLoginGithub(false);
+      } catch (err) {
+        console.error("Auth Status Error:", err);
         setCurrentUserId(null);
       } finally {
         setIsCheckingAuth(false);
@@ -90,338 +117,465 @@ function ProjectPage() {
 
   useEffect(() => {
     if (!isCheckingAuth && currentUserId !== null) {
-      fetchProjects();
+      loadAllInsights();
     } else if (!isCheckingAuth && currentUserId === null) {
-      setProjects([]);
-      setLoading(false);
+      setInsights([]);
+      setPageLoading(false);
     }
   }, [currentUserId, isCheckingAuth]);
 
-  const fetchProjects = async () => {
+  //load อยากให้เป็นแบบ paralel
+  const loadAllInsights = async () => {
     try {
-      setLoading(true);
-      const res = await axios.get("http://localhost:8000/project/", {
+      setPageLoading(true);
+      setError("");
+
+      const projectRes = await axios.get("http://localhost:8000/project/", {
         params: { userId: currentUserId },
         withCredentials: true,
       });
-      setProjects(res.data.data);
+      const projects: ProjectData[] = projectRes.data.data ?? [];
+
+      setInsights(
+        projects.map((p) => ({
+          project: p,
+          analysis: null,
+          loading: !!p.isAnalyzed,
+          analyzing: false,
+        })),
+      );
+      setPageLoading(false);
+
+      await Promise.allSettled(
+        projects
+          .filter((p) => p.isAnalyzed)
+          .map((p) => fetchScoreForProject(p._id)),
+      );
     } catch (err: any) {
-      console.error("Fetch Projects Error:", err);
-      setError("ไม่สามารถดึงข้อมูลโปรเจกต์ได้ กรุณาลองใหม่อีกครั้ง");
-    } finally {
-      setLoading(false);
+      console.error("Load Insights Error:", err);
+      setError("ไม่สามารถดึงข้อมูล Insights ได้ กรุณาลองใหม่อีกครั้ง");
+      setPageLoading(false);
     }
   };
 
+  const fetchScoreForProject = async (projectId: string) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:8000/score/${projectId}/analyze`,
+        { params: { userId: currentUserId }, withCredentials: true },
+      );
+      const analysis: ScoreAnalysis | null = res.data.success ? res.data.data : null;
+      setInsights((prev) =>
+        prev.map((item) =>
+          item.project._id === projectId
+            ? { ...item, analysis, loading: false }
+            : item,
+        ),
+      );
+    } catch {
+      setInsights((prev) =>
+        prev.map((item) =>
+          item.project._id === projectId ? { ...item, loading: false } : item,
+        ),
+      );
+    }
+  };
+
+  // ── Analyze handler ───────────────────────────────────────────────────────
   const handleAnalyze = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setAnalyzingId(projectId);
-
+    setInsights((prev) =>
+      prev.map((item) =>
+        item.project._id === projectId ? { ...item, analyzing: true } : item,
+      ),
+    );
     try {
       await axios.post(
         `http://localhost:8000/score/group/${projectId}`,
         { userId: currentUserId },
         { withCredentials: true },
       );
-
-      alert(
-        "ส่งโปรเจกต์เข้าสู่คิววิเคราะห์เรียบร้อยแล้ว! ระบบกำลังทำงานอยู่เบื้องหลัง",
+      setInsights((prev) =>
+        prev.map((item) =>
+          item.project._id === projectId
+            ? {
+                ...item,
+                analyzing: false,
+                loading: true,
+                project: { ...item.project, isAnalyzed: true },
+              }
+            : item,
+        ),
       );
-      await fetchProjects();
+      await fetchScoreForProject(projectId);
+      setExpandedId(projectId);
     } catch (err: any) {
       console.error("Analyze Error:", err);
       alert(
         err.response?.data?.error ||
           err.response?.data?.message ||
-          "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
+          "เกิดข้อผิดพลาดในการวิเคราะห์โปรเจกต์",
       );
-    } finally {
-      setAnalyzingId(null);
+      setInsights((prev) =>
+        prev.map((item) =>
+          item.project._id === projectId ? { ...item, analyzing: false } : item,
+        ),
+      );
     }
   };
 
-  // 2. จุดแก้ไข: ดึงข้อมูลคะแนนมาแสดงใน Modal (รองรับสถานะ processing / completed)
-  const fetchAnalyze = async (projectId: string, e: React.MouseEvent) => {
-    if (e) e.preventDefault();
-    setAnalyzingId(projectId);
-
-    try {
-      const res = await axios.get(
-        `http://localhost:8000/score/projects/${projectId}/status`,
-        { params: { userId: currentUserId }, withCredentials: true },
-      );
-
-      if (res.data.status === "completed") {
-        setAnalyzeData(res.data.data); // ดึงคะแนนผลลัพธ์มาเซ็ต
-      } else if (res.data.status === "processing") {
-        setAnalyzeData({ status: "processing" });
-      }
-    } catch (error: any) {
-      console.error(
-        "Analysis Fetch Error:",
-        error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message,
-      );
-      setAnalyzeData({ status: "error", message: "ไม่พบผลการวิเคราะห์ในระบบ" });
-    } finally {
-      setAnalyzingId(null);
-    }
-  };
-
-  const handleDetailClick = async (project: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    openProjectDetails(project, e);
-    await fetchAnalyze(project._id, e);
-  };
-
-  const handleDeleteProject = async (
-    projectId: string,
-    e: React.MouseEvent,
-  ) => {
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm("คุณต้องการลบโปรเจกต์นี้ใช่หรือไม่?")) return;
-
-    try {
-      await axios.delete(`http://localhost:8000/project/${projectId}`, {
-        withCredentials: true,
-      });
-      fetchProjects();
-      alert("ลบโปรเจกต์เรียบร้อยแล้ว");
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      alert("เกิดข้อผิดพลาดในการลบโปรเจกต์");
-    }
-  };
-
-  const openProjectDetails = (project: ProjectData, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedProject(project);
-    setIsViewModalOpen(true);
+    setExpandedId((prev) => (prev === id ? null : id));
   };
 
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
+    return new Date(dateString).toLocaleDateString("th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
-    };
-    return new Date(dateString).toLocaleDateString("th-TH", options);
+    });
   };
 
-  const getGradeBadge = (project: ProjectData) => {
-    if (!project.isAnalyzed) {
-      return (
-        <Badge
-          variant="secondary"
-          className="text-gray-500 px-3 py-1 font-medium"
-        >
-          Pending
-        </Badge>
-      );
-    }
-
-    const grade = project.grade || project.analysisResult?.grade;
-
-    switch (grade) {
-      case "S":
-        return (
-          <Badge className="bg-linear-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
-            <Trophy className="w-3 h-3 mr-1" /> Tier S
-          </Badge>
-        );
-      case "A":
-        return (
-          <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none px-3 py-1 font-bold">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Tier A
-          </Badge>
-        );
-      case "B":
-        return (
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 py-1 font-bold">
-            Tier B
-          </Badge>
-        );
-      case "C":
-        return (
-          <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-none px-3 py-1 font-bold">
-            Tier C
-          </Badge>
-        );
-      case "F":
-        return (
-          <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-none px-3 py-1 font-bold">
-            Tier F
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none px-3 py-1 font-medium">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Analyzed
-          </Badge>
-        );
-    }
-  };
+  //คอดสกอร์เฉลี่ย
+  const analyzedInsights = insights.filter((i) => i.analysis !== null);
+  const avgScore =
+    analyzedInsights.length > 0
+      ? Math.round(
+          analyzedInsights.reduce((s, i) => s + (i.analysis?.final_score ?? 0), 0) /
+            analyzedInsights.length,
+        )
+      : 0;
 
   return (
     <div className="max-w-8xl">
+      {/* Header */}
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-[#26318c]">My Projects</h1>
         <p className="text-gray-500 mt-2">
-          จัดการและดูภาพรวมโปรเจกต์ทั้งหมดที่คุณสร้างไว้จาก GitHub Repositories
+         see all your project insights in one place. Click on any project card to view detailed analysis and scores. Start analyzing your projects to unlock AI-powered insights and improve your code quality
         </p>
       </header>
 
-      <div className="bg-white p-8 rounded-3xl border border-[#eaeaea] shadow-sm min-h-125 flex flex-col">
-        {loading && (
+      {/* Summary stat cards */}
+      {!pageLoading && !error && insights.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="rounded-2xl border-[#eaeaea] shadow-sm">
+            <CardContent className="flex items-center gap-4 py-5 px-6">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-[#26318c] shrink-0">
+                <FolderGit2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">โปรเจกต์ทั้งหมด</p>
+                <p className="text-2xl font-bold text-slate-800">{insights.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-[#eaeaea] shadow-sm">
+            <CardContent className="flex items-center gap-4 py-5 px-6">
+              <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">วิเคราะห์แล้ว</p>
+                <p className="text-2xl font-bold text-slate-800">{analyzedInsights.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-[#eaeaea] shadow-sm">
+            <CardContent className="flex items-center gap-4 py-5 px-6">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">คะแนนเฉลี่ย</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {analyzedInsights.length > 0 ? `${avgScore}/100` : "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main panel */}
+      <div className="bg-white p-8 rounded-3xl border border-[#eaeaea] shadow-sm min-h-[31.25rem] flex flex-col">
+
+        {/* Loading */}
+        {pageLoading && (
           <div className="flex-1 flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#26318c] mb-4"></div>
-            <p className="text-gray-500">กำลังโหลดข้อมูลโปรเจกต์ของคุณ...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#26318c] mb-4" />
+            <p className="text-gray-500">กำลังโหลดข้อมูล Insights...</p>
           </div>
         )}
 
-        {!loading && error && (
+        {/* Error */}
+        {!pageLoading && error && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
             <div className="text-red-500 mb-4 bg-red-50 p-4 rounded-full">
-              <FolderGit2 className="w-10 h-10" />
+              <BarChart3 className="w-10 h-10" />
             </div>
-            <h3 className="text-lg font-medium text-gray-800">
-              เกิดข้อผิดพลาด
-            </h3>
+            <h3 className="text-lg font-medium text-gray-800">เกิดข้อผิดพลาด</h3>
             <p className="text-gray-500 mt-2">{error}</p>
-            <Button
-              onClick={fetchProjects}
-              className="mt-4 bg-[#26318c] hover:bg-[#1a2366]"
-            >
+            <Button onClick={loadAllInsights} className="mt-4 bg-[#26318c] hover:bg-[#1a2366]">
               ลองใหม่อีกครั้ง
             </Button>
           </div>
         )}
 
-        {!loading && !error && projects.length === 0 && (
+        {/* Empty */}
+        {!pageLoading && !error && insights.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-              <FolderGit2 className="w-10 h-10 text-[#26318c]" />
+              <BarChart3 className="w-10 h-10 text-[#26318c]" />
             </div>
-            <h2 className="text-xl font-semibold mb-2 text-slate-800">
-              ยังไม่มีโปรเจกต์
-            </h2>
+            <h2 className="text-xl font-semibold mb-2 text-slate-800">ยังไม่มีข้อมูล Insights</h2>
             <p className="text-gray-500 mb-6 max-w-md">
-              คุณยังไม่ได้สร้างโปรเจกต์ใดๆ กลับไปที่หน้า Dashboard เพื่อเลือก
-              Repository และเริ่มสร้างโปรเจกต์แรกของคุณได้เลย
+              คุณยังไม่มีโปรเจกต์ หรือยังไม่ได้วิเคราะห์โปรเจกต์ใดๆ
+              กลับไปที่หน้า Projects เพื่อเริ่มวิเคราะห์ได้เลย
             </p>
             <Button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/dashboard/project")}
               className="bg-[#26318c] text-white px-8 py-3 rounded-xl font-medium hover:bg-[#1a2366] transition-all shadow-md"
             >
-              ไปที่ Dashboard
+              ไปที่ Projects
             </Button>
           </div>
         )}
 
-        {!loading && !error && projects.length > 0 && (
+        {/* Insight grid */}
+        {!pageLoading && !error && insights.length > 0 && (
           <>
-            <div className="flex justify-between items-end mb-6 pb-4 border-b">
+            {/* Section*/}
+            <div className="flex justify-between items-end mb-6 pb-4">
               <h2 className="text-xl font-semibold text-slate-800">
-                All Projects{" "}
+                All Insights{" "}
                 <span className="text-sm font-normal text-muted-foreground ml-2">
-                  ({projects.length})
+                  ({insights.length})
                 </span>
               </h2>
             </div>
 
+            {/* column grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
-                <Card
-                  key={project._id}
-                  className="hover:border-[#26318c]/40 hover:shadow-md transition-all rounded-2xl border-gray-200 flex flex-col cursor-pointer relative"
-                  onClick={() => router.push(`/project/${project._id}`)} // ย้ายไปหน้า Report เต็มรูปแบบ
-                >
-                  <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                    {getGradeBadge(project)}
+              {insights.map(({ project, analysis, loading, analyzing }) => {
+                const isExpanded = expandedId === project._id;
 
-                    <button
-                      onClick={(e) => handleDeleteProject(project._id, e)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete Project"
+                return (
+                  <div key={project._id} className="flex flex-col">
+                    {/*projcet card */}
+                    <Card
+                      className="hover:border-[#26318c]/40 hover:shadow-md transition-all rounded-2xl border-gray-200 flex flex-col cursor-pointer relative"
+                      onClick={() => router.push(`/dashboard/project/${project._id}`)}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      {/* Grade badge */}
+                      <div className="absolute top-4 right-4 z-10">
+                        {loading ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#26318c]" />
+                        ) : analysis ? (
+                          <GradeBadge grade={analysis.grade} />
+                        ) : (
+                          <Badge variant="secondary" className="text-gray-500 px-3 py-1 font-medium">
+                            Pending
+                          </Badge>
+                        )}
+                      </div>
+
+                      <CardHeader className="pb-3">
+                        {/* Folder icon */}
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#26318c] mb-3">
+                          <FolderGit2 className="w-5 h-5" />
+                        </div>
+
+                        {/* Project name */}
+                        <CardTitle
+                          className="text-xl font-bold text-slate-800 truncate pr-16"
+                          title={project.groupName}
+                        >
+                          {project.groupName}
+                        </CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="pb-4 flex-1">
+                        <div className="flex flex-col gap-3 text-sm text-gray-600">
+                          {/* Repo count */}
+                          <div className="flex items-center gap-2">
+                            <GitPullRequestDraft className="w-4 h-4 text-gray-400" />
+                            <span>รวม {project.repos?.length ?? 0} Repositories</span>
+                          </div>
+
+                          {/* Date */}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span>สร้างเมื่อ: {formatDate(project.createdAt)}</span>
+                          </div>
+
+                          {/* Score pill */}
+                          {analysis && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <BarChart3 className="w-4 h-4 text-gray-400" />
+                              <span className="font-semibold text-[#26318c]">
+                                {analysis.final_score}
+                                <span className="font-normal text-gray-400 text-xs ml-0.5">/100</span>
+                              </span>
+                              <span className="text-gray-400 text-xs truncate flex-1">
+                                — {analysis.insight}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Pending notice */}
+                          {!loading && !analysis && (
+                            <div className="flex items-center gap-2 text-gray-400 mt-1">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span className="text-xs">ยังไม่ได้วิเคราะห์</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+
+                      {/* Footer buttons */}
+                      <CardFooter
+                        className="pt-4 border-t border-gray-100 mt-auto flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/*toggle */}
+                        <Button
+                          variant="ghost"
+                          className="flex-1 text-gray-600 rounded-xl hover:bg-blue-50/50 hover:text-[#26318c]"
+                          disabled={!analysis}
+                          onClick={(e) => toggleExpand(project._id, e)}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="w-4 h-4 mr-1" /> ย่อ
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4 mr-1" /> รายละเอียด
+                            </>
+                          )}
+                        </Button> {/* }
+
+                        {/* Analyze */}
+                        <Button
+                          className="flex-1 bg-[#26318c] hover:bg-[#1a2366] rounded-xl"
+                          disabled={analyzing || loading}
+                          onClick={(e) => handleAnalyze(project._id, e)}
+                        >
+                          {analyzing ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                              Analysing...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              {analysis ? "Re-Analyze" : "Analyze AI"}
+                            </>
+                          )}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+
+
+                    {isExpanded && analysis && (
+                      <div className="mt-2 p-5 bg-slate-50 border border-gray-200 rounded-2xl">
+
+                        {/* Score breakdown */}
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                          Score Breakdown
+                        </p>
+                        <div className="grid grid-cols-1 gap-y-3 mb-5">
+                          {SCORE_METRICS.map(({ key, label, max, icon: Icon, color }) => {
+                            const value = analysis[key as keyof ScoreAnalysis] as number;
+                            return (
+                              <div key={key}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                    <Icon className="w-3.5 h-3.5 text-gray-400" />
+                                    {label}
+                                  </div>
+                                  <span className="text-sm font-semibold text-slate-700">
+                                    {value}
+                                    <span className="text-xs font-normal text-gray-400">/{max}</span>
+                                  </span>
+                                </div>
+                                <ScoreBar value={value} max={max} color={color} />
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Detailed stat chips */}
+                        {analysis.detailed_stats && (
+                          <>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                              Detailed Stats
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {analysis.detailed_stats.hardcodedSecrets !== undefined && (
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                                  analysis.detailed_stats.hardcodedSecrets > 0
+                                    ? "bg-red-50 text-red-600"
+                                    : "bg-green-50 text-green-600"
+                                }`}>
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Secrets: {analysis.detailed_stats.hardcodedSecrets}
+                                </span>
+                              )}
+                              {analysis.detailed_stats.nestedLoopsO2 !== undefined && (
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                                  (analysis.detailed_stats.nestedLoopsO2 ?? 0) > 3
+                                    ? "bg-yellow-50 text-yellow-700"
+                                    : "bg-green-50 text-green-600"
+                                }`}>
+                                  <Zap className="w-3 h-3" />
+                                  Nested loops: {analysis.detailed_stats.nestedLoopsO2}
+                                </span>
+                              )}
+                              {analysis.detailed_stats.leftoverLogs !== undefined && (
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                                  (analysis.detailed_stats.leftoverLogs ?? 0) > 5
+                                    ? "bg-orange-50 text-orange-600"
+                                    : "bg-green-50 text-green-600"
+                                }`}>
+                                  <FileCode2 className="w-3 h-3" />
+                                  Logs: {analysis.detailed_stats.leftoverLogs}
+                                </span>
+                              )}
+                              {analysis.detailed_stats.commentRatioPercent !== undefined && (
+                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-blue-50 text-blue-600">
+                                  <BookOpen className="w-3 h-3" />
+                                  Comments: {analysis.detailed_stats.commentRatioPercent}%
+                                </span>
+                              )}
+                              {analysis.detailed_stats.massiveFiles !== undefined && (
+                                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
+                                  (analysis.detailed_stats.massiveFiles ?? 0) > 0
+                                    ? "bg-orange-50 text-orange-600"
+                                    : "bg-green-50 text-green-600"
+                                }`}>
+                                  <FolderGit2 className="w-3 h-3" />
+                                  Large files: {analysis.detailed_stats.massiveFiles}
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#26318c] mb-3">
-                        <FolderGit2 className="w-5 h-5" />
-                      </div>
-                    </div>
-                    <CardTitle
-                      className="text-xl font-bold text-slate-800 truncate pr-16"
-                      title={project.groupName}
-                    >
-                      {project.groupName}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="pb-4 flex-1">
-                    <div className="flex flex-col gap-3 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <GitPullRequestDraft className="w-4 h-4 text-gray-400" />
-                        <span>
-                          รวม {project.repos?.length || 0} Repositories
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>สร้างเมื่อ: {formatDate(project.createdAt)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="pt-4 border-t border-gray-100 mt-auto flex gap-2">
-                    <Button
-                      variant="ghost"
-                      className="flex-1 text-gray-600 rounded-xl hover:bg-blue-50/50 hover:text-[#26318c]"
-                      onClick={(e) => handleDetailClick(project, e)} // เรียก Modal ดึงคะแนนตรงๆ
-                    >
-                      ดูรายละเอียด
-                    </Button>
-
-                    <Button
-                      className="flex-1 bg-[#26318c] hover:bg-[#1a2366] rounded-xl"
-                      disabled={analyzingId === project._id}
-                      onClick={(e) => handleAnalyze(project._id, e)}
-                    >
-                      {analyzingId === project._id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Analysing...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" /> Analyze AI
-                        </>
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
       </div>
-
-      <ProjectAnalysisModal
-        isOpen={isViewModalOpen}
-        onClose={() => {
-          setIsViewModalOpen(false);
-          setAnalyzeData(null);
-        }}
-        project={selectedProject}
-        analysisData={analyzeData}
-      />
     </div>
   );
 }
 
-export default ProjectPage;
+export default InsightPage;
