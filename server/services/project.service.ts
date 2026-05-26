@@ -91,7 +91,6 @@ const ProjectService = {
         };
       });
 
-      console.log("ส่งข้อมูลพร้อมเกรดให้ Frontend:", projectsWithStatus);
 
       return projectsWithStatus;
     } catch (error) {

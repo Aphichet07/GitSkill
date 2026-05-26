@@ -5,6 +5,9 @@ import path from "path";
 import os from "os";
 import { randomUUID } from "crypto";
 import AdmZip from "adm-zip";
+import { pipeline } from "stream/promises";
+import { createWriteStream } from "fs";
+import { Worker } from "worker_threads";
 
 const RepoService = {
   async getusername(accessToken: string) {
@@ -225,59 +228,77 @@ const RepoService = {
   },
 
   async downloadRepoForAnalysis(token: string, owner: string, repo: string) {
-    try {
-      // ดึงข้อมูล Repo โดยใช้ owner จาก Parameter โดยตรง 
-      const infoRes = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        }
-      );
-      const branch = infoRes.data.default_branch;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+    };
 
-      // สร้างโฟลเดอร์ชั่วคราว
-      const tempDir = path.join(os.tmpdir(), `wallet-${randomUUID()}`);
+    const axiosInstance = axios.create({ timeout: 30_000 }); // ① timeout กลาง
+
+    try {
+      // ② สร้าง tempDir พร้อมกับดึง repo info แทนที่จะรอทีละขั้น
+      const [infoRes, tempDir] = await Promise.all([
+        axiosInstance.get(`https://api.github.com/repos/${owner}/${repo}`, {
+          headers,
+        }),
+        fs.mkdtemp(path.join(os.tmpdir(), "wallet-")), // ③ mkdtemp ปลอดภัยกว่า mkdir
+      ]);
+
+      const branch = infoRes.data.default_branch;
       const zipFilePath = path.join(tempDir, `${repo}.zip`);
       const extractPath = path.join(tempDir, "extracted");
 
-      await fs.mkdir(tempDir, { recursive: true });
+      await fs.mkdir(extractPath, { recursive: true });
 
-      // โหลด .zip ของโค้ดทั้งโปรเจกต์
+      // ④ Stream แทน arraybuffer — ไม่โหลดทั้งก้อนเข้า RAM
       const zipUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${branch}`;
-      const response = await axios.get(zipUrl, {
-        responseType: "arraybuffer",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+      const response = await axiosInstance.get(zipUrl, {
+        responseType: "stream",
+        headers,
       });
 
-      await fs.writeFile(zipFilePath, response.data);
+      await pipeline(response.data, createWriteStream(zipFilePath));
 
-      // แตกไฟล์
-      const zip = new AdmZip(zipFilePath);
-      zip.extractAllTo(extractPath, true);
+      await new Promise<void>((resolve, reject) => {
+        const worker = new Worker(
+          `
+        const { workerData } = require('worker_threads');
+        const AdmZip = require('adm-zip');
+        try {
+          const zip = new AdmZip(workerData.zipFilePath);
+          zip.extractAllTo(workerData.extractPath, true);
+          process.exit(0);
+        } catch (e) {
+          process.exit(1);
+        }
+        `,
+          {
+            eval: true,
+            workerData: { zipFilePath, extractPath },
+          },
+        );
+        worker.on("exit", (code) =>
+          code === 0
+            ? resolve()
+            : reject(new Error(`Extraction failed: ${code}`)),
+        );
+      });
 
-      // หาโฟลเดอร์ชั้นในสุดที่แตกออกมา
       const extractedFolders = await fs.readdir(extractPath);
-      if (!extractedFolders[0]) {
-        throw new Error("Repository is empty");
-      }
-      const sourceCodePath = path.join(extractPath, extractedFolders[0]);
+      if (!extractedFolders[0]) throw new Error("Repository is empty");
+
+      await fs.unlink(zipFilePath).catch(() => {});
 
       return {
-        repoInfo: infoRes.data, // คืนค่าข้อมูล Repo กลับไปด้วย
-        sourceCodePath, 
-        tempDirToCleanUp: tempDir, 
+        repoInfo: infoRes.data,
+        sourceCodePath: path.join(extractPath, extractedFolders[0]),
+        tempDirToCleanUp: tempDir,
       };
     } catch (error: any) {
       console.error("Download Repo Error:", error.message);
       throw error;
     }
-  }
+  },
 };
 
 export default RepoService;
