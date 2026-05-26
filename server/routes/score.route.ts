@@ -1,9 +1,10 @@
 import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
-import ScoreController from "../controllers/score.controller.js";
+import { ScoreController } from "../controllers/score.controller.js";
+
+
+
 const router = express.Router();
-
-
 /**
  * @swagger
  * tags:
@@ -48,7 +49,15 @@ const router = express.Router();
  *       404:
  *         description: ไม่พบโปรเจกต์ที่ระบุ
  */
-router.get("/:projectId/analyze", verifyToken,ScoreController.Analysis)
+router.get(
+  "/projects/:userProjectId/status", 
+  verifyToken,                 
+  ScoreController.CheckAnalysisStatus
+);
+
+router.get("/test", (req, res)=>{
+    res.status(200).json({ message: "Welcome To Score!" });
+})
 
 /**
  * @swagger

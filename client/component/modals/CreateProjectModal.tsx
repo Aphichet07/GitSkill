@@ -50,13 +50,11 @@ export function CreateProjectModal({
         selectedRepos,
         userId,
       };
-      console.log("payload : ", payload)
       const res = await axios.post(`http://localhost:8000/project/`, payload, {
         withCredentials: true,
       });
 
       onSuccess();
-      console.log("response : ", res.data)
       setGroupName("");
       onClose();
     } catch (err: any) {

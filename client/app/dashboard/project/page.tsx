@@ -42,7 +42,7 @@ interface ProjectData {
   repos: RepoData[];
   createdAt: string;
   isAnalyzed: boolean;
-  grade?: string; 
+  grade?: string;
   analysisResult?: any;
 }
 
@@ -59,13 +59,12 @@ function ProjectPage() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [isLoginGithub, setIsLoginGithub] = useState<boolean>(false);
-
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res : any = await axios.get("http://localhost:8000/auth/status", {
+        const res: any = await axios.get("http://localhost:8000/auth/status", {
           withCredentials: true,
         });
 
@@ -101,12 +100,10 @@ function ProjectPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-
       const res = await axios.get("http://localhost:8000/project/", {
         params: { userId: currentUserId },
         withCredentials: true,
       });
-
       setProjects(res.data.data);
     } catch (err: any) {
       console.error("Fetch Projects Error:", err);
@@ -121,46 +118,52 @@ function ProjectPage() {
     setAnalyzingId(projectId);
 
     try {
-      const res = await axios.post(
+      await axios.post(
         `http://localhost:8000/score/group/${projectId}`,
         { userId: currentUserId },
         { withCredentials: true },
       );
-      console.log("G : ", res.data.result);
-      setAnalyzeData(res.data.result);
-      alert("วิเคราะห์โปรเจกต์แบบกลุ่มเสร็จสิ้น!");
+
+      alert(
+        "ส่งโปรเจกต์เข้าสู่คิววิเคราะห์เรียบร้อยแล้ว! ระบบกำลังทำงานอยู่เบื้องหลัง",
+      );
       await fetchProjects();
     } catch (err: any) {
       console.error("Analyze Error:", err);
       alert(
         err.response?.data?.error ||
           err.response?.data?.message ||
-          "เกิดข้อผิดพลาดในการวิเคราะห์ข้อมูล",
+          "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
       );
     } finally {
       setAnalyzingId(null);
     }
   };
 
+  // 2. จุดแก้ไข: ดึงข้อมูลคะแนนมาแสดงใน Modal (รองรับสถานะ processing / completed)
   const fetchAnalyze = async (projectId: string, e: React.MouseEvent) => {
     if (e) e.preventDefault();
-
     setAnalyzingId(projectId);
 
     try {
       const res = await axios.get(
-        `http://localhost:8000/score/${projectId}/analyze`,
-
+        `http://localhost:8000/score/projects/${projectId}/status`,
         { params: { userId: currentUserId }, withCredentials: true },
       );
-      if (res.data.success) {
-        setAnalyzeData(res.data.data);
+
+      if (res.data.status === "completed") {
+        setAnalyzeData(res.data.data); // ดึงคะแนนผลลัพธ์มาเซ็ต
+      } else if (res.data.status === "processing") {
+        setAnalyzeData({ status: "processing" });
       }
     } catch (error: any) {
       console.error(
         "Analysis Fetch Error:",
-        error.response?.data?.message || error.message,
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          error.message,
       );
+      setAnalyzeData({ status: "error", message: "ไม่พบผลการวิเคราะห์ในระบบ" });
     } finally {
       setAnalyzingId(null);
     }
@@ -207,7 +210,6 @@ function ProjectPage() {
   };
 
   const getGradeBadge = (project: ProjectData) => {
-    console.log("Project Data: ", project);
     if (!project.isAnalyzed) {
       return (
         <Badge
@@ -333,7 +335,7 @@ function ProjectPage() {
                 <Card
                   key={project._id}
                   className="hover:border-[#26318c]/40 hover:shadow-md transition-all rounded-2xl border-gray-200 flex flex-col cursor-pointer relative"
-                  onClick={() => router.push(`/project/${project._id}`)}
+                  onClick={() => router.push(`/project/${project._id}`)} // ย้ายไปหน้า Report เต็มรูปแบบ
                 >
                   <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                     {getGradeBadge(project)}
@@ -380,7 +382,7 @@ function ProjectPage() {
                     <Button
                       variant="ghost"
                       className="flex-1 text-gray-600 rounded-xl hover:bg-blue-50/50 hover:text-[#26318c]"
-                      onClick={(e) => handleDetailClick(project, e)}
+                      onClick={(e) => handleDetailClick(project, e)} // เรียก Modal ดึงคะแนนตรงๆ
                     >
                       ดูรายละเอียด
                     </Button>

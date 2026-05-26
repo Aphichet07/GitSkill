@@ -14,7 +14,7 @@ const RepoController = {
     try {
       const userId = req.userPayload?.userId;
       const user = await RepoService.findUser(userId!);
-      console.log("User Here ---> ", user);
+   
 
       if (!user || !user.githubAccessToken) {
         return res.status(400).json({
@@ -55,7 +55,6 @@ const RepoController = {
         user.githubAccessToken!,
         repoName,
       );
-      console.log(data);
       res.status(200).json({ message: "Success", data: data });
     } catch (err) {
       console.log(err);
@@ -153,16 +152,13 @@ const RepoController = {
       if (isNaN(numericUserId)) {
         return res.status(400).json({ message: "User ID must be a number" });
       }
-      console.log("numericUserId --> ",numericUserId)
       const user = await RepoService.findUser(numericUserId);
-      console.log("user ->", user.githubAccessToken)
       if (!user || !user.githubAccessToken) {
         return res.status(400).json({
           message: "GitHub Access Token not found. Please login with GitHub again.",
         });
       }
 
-      console.log("-----> ",owner, repoName)
       const fullCode = await RepoService.getFullRepoCode(
         user.githubAccessToken,
         owner,

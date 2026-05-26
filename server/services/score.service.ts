@@ -2,7 +2,9 @@ import util from "util";
 import { exec as execCb } from "child_process";
 import fs from "fs/promises";
 import path from "path";
-import { jscpd } from 'jscpd';
+import { RepoGroup } from "../models/RepoGroup.js";
+import { prisma } from "../lib/prisma.js";
+// import { jscpd } from "jscpd";
 const exec = util.promisify(execCb);
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -190,7 +192,6 @@ async function analyzeCodeQuality(allFiles: string[]) {
     },
   };
 }
-
 async function runJSCPD(sourceCodePath: string): Promise<number> {
   const reportPath = path.join(sourceCodePath, "jscpd-report.json");
   try {
@@ -198,12 +199,29 @@ async function runJSCPD(sourceCodePath: string): Promise<number> {
       `npx --no jscpd "${sourceCodePath}" --reporters json --output "${sourceCodePath}" --silent --ignore "**/*.min.js,**/node_modules/**,**/dist/**,**/.git/**"`,
       { timeout: 30_000 },
     );
+
+    // อ่านผลลัพธ์จากไฟล์ JSON ที่ jscpd สร้างขึ้น
     const report = JSON.parse(await fs.readFile(reportPath, "utf-8"));
     return report.statistics?.total?.percentage ?? 0;
-  } catch {
+  } catch (err) {
+    console.error("⚠️ JSCPD CLI Warning:", err);
     return 0;
   }
 }
+
+// async function runJSCPD(sourceCodePath: string): Promise<number> {
+//   const reportPath = path.join(sourceCodePath, "jscpd-report.json");
+//   try {
+//     await exec(
+//       `npx --no jscpd "${sourceCodePath}" --reporters json --output "${sourceCodePath}" --silent --ignore "**/*.min.js,**/node_modules/**,**/dist/**,**/.git/**"`,
+//       { timeout: 30_000 },
+//     );
+//     const report = JSON.parse(await fs.readFile(reportPath, "utf-8"));
+//     return report.statistics?.total?.percentage ?? 0;
+//   } catch {
+//     return 0;
+//   }
+// }
 
 const ScoreService = {
   async analyzeProject(sourceCodePath: string) {
@@ -358,6 +376,38 @@ const ScoreService = {
       console.error("Scoring Error:", error.message);
       throw error;
     }
+  },
+
+  async getAnalysisResult(userId: string, mongoProjectId: string) {
+    const repoGroup = await RepoGroup.findById(mongoProjectId);
+    if (!repoGroup) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    if (!repoGroup.isAnalyzed) {
+      return { status: "processing" };
+    }
+
+    const userProject = await prisma.userProject.findFirst({
+      where: { mongoProjectId, userId: Number(userId) },
+    });
+
+    if (!userProject) {
+      throw new Error("USER_PROJECT_NOT_FOUND");
+    }
+
+    const analysisResult = await prisma.project_analysis.findUnique({
+      where: { user_project_id: userProject.id },
+    });
+
+    if (!analysisResult) {
+      throw new Error("ANALYSIS_RESULT_NOT_FOUND");
+    }
+
+    return {
+      status: "completed",
+      data: analysisResult,
+    };
   },
 };
 
