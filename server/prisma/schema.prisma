@@ -34,13 +34,17 @@ model User {
 model UserSkill {
   id          Int      @id @default(autoincrement())
   userId      Int      @map("user_id")
-  language    String
+
+  skill_name  String   
+  category    String   
+  
   points      Int      @default(0)
   lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, language])
+  // เปลี่ยน Unique ให้ดักจับจากชื่อสกิลแทน
+  @@unique([userId, skill_name])
   @@map("user_skills")
 }
 
@@ -60,7 +64,10 @@ model UserProject {
 model ProjectSkill {
   id            Int    @id @default(autoincrement())
   userProjectId Int    @map("user_project_id")
-  language      String
+  
+  skill_name    String
+  category      String
+  
   points        Int
 
   project UserProject @relation(fields: [userProjectId], references: [id], onDelete: Cascade)

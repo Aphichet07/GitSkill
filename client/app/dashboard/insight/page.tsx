@@ -84,7 +84,7 @@ function getGradeBadge(grade: string | undefined) {
   switch (grade) {
     case "S":
       return (
-        <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
+        <Badge className="bg-linear-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
           <Trophy className="w-3 h-3 mr-1" /> Tier S
         </Badge>
       );
@@ -279,7 +279,7 @@ function InsightPage() {
         </div>
       )}
 
-      <div className="bg-white p-8 rounded-3xl border border-[#eaeaea] shadow-sm min-h-[31.25rem] flex flex-col">
+      <div className="bg-white p-8 rounded-3xl border border-[#eaeaea] shadow-sm min-h-125 flex flex-col">
 
       {/*loading*/}
         {pageLoading && (
