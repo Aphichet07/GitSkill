@@ -5,5 +5,6 @@ import SkillController from "../controllers/user.controller.js";
 const router = express.Router()
 
 router.get("/skills", verifyToken, SkillController.GetUserSkills);
-router.get("/profile", verifyToken, SkillController.GetUserProfile);
+router.get("/profile",  SkillController.GetUserProfile);
+router.get("/github/profile", verifyToken, SkillController.GetGithubProfile);
 export default router

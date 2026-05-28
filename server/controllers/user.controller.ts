@@ -29,8 +29,8 @@ const SkillController = {
   },
   async GetUserProfile(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id || (req as any).userPayload?.userId;
-      // const userId = 2;
+      // const userId = (req as any).user?.id || (req as any).userPayload?.userId;
+      const userId = 2;
       if (!userId) {
         return res.status(401).json({ success: false, error: "Unauthorized" });
       }
@@ -46,6 +46,47 @@ const SkillController = {
       return res.status(500).json({
         success: false,
         error: "ไม่สามารถดึงข้อมูลโปรไฟล์ได้",
+      });
+    }
+  },
+  async GetGithubProfile(req: Request, res: Response) {
+    try {
+      const userId = req.userPayload?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      // เรียกใช้ Service
+      const profileData = await SkillService.getProfileData(userId);
+
+      // ตอบกลับผลลัพธ์
+      return res.status(200).json({
+        success: true,
+        data: profileData,
+      });
+      
+    } catch (error: any) {
+      console.error("❌ [GithubController] Error:", error.message);
+
+      // แปลง Error จาก Service เป็น HTTP Status ที่เหมาะสม
+      if (error.message === "GITHUB_TOKEN_NOT_FOUND") {
+        return res.status(404).json({ 
+          success: false, 
+          error: "ไม่พบ GitHub Token กรุณาเชื่อมต่อ GitHub ก่อน" 
+        });
+      }
+      
+      if (error.message === "GITHUB_TOKEN_EXPIRED") {
+        return res.status(401).json({ 
+          success: false, 
+          error: "GitHub Token หมดอายุหรือไม่ถูกต้อง (Unauthorized)" 
+        });
+      }
+
+      return res.status(500).json({ 
+        success: false, 
+        error: "เกิดข้อผิดพลาดในการดึงข้อมูลจาก GitHub" 
       });
     }
   },

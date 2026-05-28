@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import axios from "axios";
 
 const SkillService = {
   async processSkillsAfterAnalysis(userProjectId: number, userId: number) {
@@ -223,6 +224,42 @@ const SkillService = {
     } catch (error) {
       console.error("❌ [SkillService] getUserProfileData Error:", error);
       throw new Error("ดึงข้อมูลโปรไฟล์ล้มเหลว");
+    }
+  },
+
+  async getProfileData(userId: number) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { githubAccessToken: true },
+    });
+
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GITHUB_TOKEN_NOT_FOUND");
+    }
+    console.log("Hello form github")
+    try {
+      const githubResponse = await axios.get("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${user.githubAccessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+      console.log("Github Response: ", githubResponse.data)
+
+      return {
+        username: githubResponse.data.login,
+        name: githubResponse.data.name,
+        avatarUrl: githubResponse.data.avatar_url,
+        bio: githubResponse.data.bio,
+        publicRepos: githubResponse.data.public_repos,
+        followers: githubResponse.data.followers,
+        githubUrl: githubResponse.data.html_url,
+      };
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error("GITHUB_TOKEN_EXPIRED");
+      }
+      throw new Error("GITHUB_API_ERROR");
     }
   },
 };
