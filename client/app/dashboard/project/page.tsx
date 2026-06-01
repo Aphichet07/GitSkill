@@ -4,35 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import {
-    FolderGit2,
-    Calendar,
-    GitPullRequestDraft,
-    Sparkles,
-    CheckCircle2,
-    Trash2,
-    Trophy,
-    X,
-    AlertCircle,
-    BarChart2,
-    Shield,
-    FileCode2,
-    Zap,
-    BookOpen,
-    Code2,
-    Clock,
-    Star,
-    ExternalLink,
-    Lock,
-    RefreshCw,
-    AlertTriangle,
-    Hash,
-    Terminal,
-    GitBranch,
-    Layers,
-    Activity,
-    Copy,
-    Info,
-    TrendingUp,
+  FolderGit2,
+  Calendar,
+  GitPullRequestDraft,
+  Sparkles,
+  CheckCircle2,
+  Trash2,
+  TrendingUp,
+  GitBranch,
 } from "lucide-react";
 import {
   Card,
@@ -46,8 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import DeleteCard from "@/component/card/DeleteCard";
 import { useNotification } from "@/context/NotificationContext";
 
-
-// Imports Components และ Types ที่แยกออกไป
 import StatCard from "./Statcard";
 import ProjectDetailModal from "./projectdetail";
 import { ProjectData, AnalysisData } from "./type";
@@ -83,18 +60,6 @@ export default function ProjectPage() {
     const total = analyzedWithScore.reduce((sum, p) => sum + (p.finalScore || 0), 0);
     return Math.round(total / analyzedWithScore.length);
   })();
-
-  const gradeDistribution = ["S", "A", "B", "C"].map((g) => ({
-    grade: g,
-    count: projects.filter((p) => p.grade === g).length,
-  }));
-
-  const GRADE_COLOR_MAP: Record<string, string> = {
-    S: "text-amber-600 bg-amber-50",
-    A: "text-emerald-600 bg-emerald-50",
-    B: "text-blue-600 bg-blue-50",
-    C: "text-orange-600 bg-orange-50",
-  };
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -136,8 +101,7 @@ export default function ProjectPage() {
     }
   };
 
-
-const pollAnalysisStatus = (projectId: string, projectName: string) => {
+  const pollAnalysisStatus = (projectId: string, projectName: string) => {
     let attempts = 0;
     const maxAttempts = 60;
     const interval = setInterval(async () => {
@@ -145,10 +109,7 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
       if (attempts > maxAttempts) {
         clearInterval(interval);
         setAnalyzingId(null);
-        addToast(
-          `ใช้เวลาวิเคราะห์นานผิดปกติ กรุณารีเฟรชเพื่อตรวจสอบ`,
-          "error",
-        );
+        addToast(`ใช้เวลาวิเคราะห์นานผิดปกติ กรุณารีเฟรชเพื่อตรวจสอบ`, "error");
         return;
       }
       try {
@@ -159,29 +120,18 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         if (res.data.status === "completed") {
           clearInterval(interval);
           setAnalyzingId(null);
-          addToast(
-            `ประมวลผลโปรเจกต์ ${projectName} เสร็จสิ้นแล้ว!`,
-            "success",
-          );
+          addToast(`ประมวลผลโปรเจกต์ ${projectName} เสร็จสิ้นแล้ว!`, "success");
           fetchProjects();
         } else if (["error", "failed"].includes(res.data.status)) {
           clearInterval(interval);
           setAnalyzingId(null);
-          addToast(
-            `เกิดข้อผิดพลาดในการวิเคราะห์โปรเจกต์ ${projectName}`,
-            "error",
-          );
+          addToast(`เกิดข้อผิดพลาดในการวิเคราะห์โปรเจกต์ ${projectName}`, "error");
         }
-      } catch {
-      }
+      } catch {}
     }, 5000);
   };
 
-  const handleAnalyze = async (
-    projectId: string,
-    projectName: string,
-    e: React.MouseEvent,
-  ) => {
+  const handleAnalyze = async (projectId: string, projectName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setAnalyzingId(projectId);
     try {
@@ -190,19 +140,14 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         { userId: currentUserId },
         { withCredentials: true },
       );
-      addToast(
-        `ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`,
-        "info",
-      );
+      addToast(`ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`, "info");
       await fetchProjects();
       pollAnalysisStatus(projectId, projectName);
     } catch (err: any) {
       setAnalyzingId(null);
       addToast(
-        err.response?.data?.error ||
-          err.response?.data?.message ||
-          "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
-        "error",
+        err.response?.data?.error || err.response?.data?.message || "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
+        "error"
       );
     }
   };
@@ -215,9 +160,7 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         { params: { userId: currentUserId }, withCredentials: true },
       );
       setAnalyzeData(
-        res.data.status === "completed"
-          ? res.data.data
-          : { status: res.data.status },
+        res.data.status === "completed" ? res.data.data : { status: res.data.status }
       );
     } catch {
       setAnalyzeData(null);
@@ -226,6 +169,7 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
     }
   };
 
+  // เปิด modelดูรายละเอียดโปรเจกต์ และถ้าโปรเจกต์นั้นวิเคราะห์แล้วก็จะดึงข้อมูลการวิเคราะห์มาแสดงด้วย
   const handleDetailClick = async (project: ProjectData, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedProject(project);
@@ -245,9 +189,7 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
   const confirmDeleteProject = async () => {
     if (!projectToDelete) return;
     try {
-      await axios.delete(`http://localhost:8000/project/${projectToDelete}`, {
-        withCredentials: true,
-      });
+      await axios.delete(`http://localhost:8000/project/${projectToDelete}`, { withCredentials: true });
       fetchProjects();
       addToast("ลบโปรเจกต์เรียบร้อยแล้ว", "success");
     } catch {
@@ -286,6 +228,7 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">จัดการและดูภาพรวมโปรเจกต์ทั้งหมดที่คุณสร้างไว้จาก GitHub Repositories</p>
       </header>
 
+      {/* Stats Overview */}
       {!loading && !error && projects.length > 0 && (
         <div className="mb-6 space-y-3">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -297,6 +240,78 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         </div>
       )}
 
+      {/*Card Grid*/}
+      <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-[#eaeaea] shadow-sm min-h-[60vh] flex flex-col">
+        {loading && (
+          <div className="flex-1 flex flex-col items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#26318c] mb-4" />
+          </div>
+        )}
+
+        {!loading && projects.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+            <h2 className="text-lg font-semibold text-slate-800">ยังไม่มีโปรเจกต์</h2>
+          </div>
+        )}
+
+        {!loading && projects.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {projects.map((project) => (
+              <Card
+                key={project._id}
+                className="rounded-2xl border border-gray-200 flex flex-col cursor-pointer relative transition-all duration-300 ease-out hover:border-[#26318c]/40 hover:shadow-xl hover:-translate-y-1.5 bg-white"
+                onClick={() => router.push(`/project/${project._id}`)}
+              >
+                {/* Grade + Delete Button */}
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                  {getGradeBadge(project)}
+                  <button onClick={(e) => handleDeleteClick(project._id, e)} className="p-1.5 text-gray-400 hover:text-red-500">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <CardHeader className="pb-2 px-4 pt-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#26318c] mb-2">
+                    <FolderGit2 className="w-4 h-4" />
+                  </div>
+                  <CardTitle className="text-lg font-bold truncate pr-16">{project.groupName}</CardTitle>
+                </CardHeader>
+
+                <CardContent className="pb-3 px-4 flex-1">
+                  <div className="flex flex-col gap-2 text-xs text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <GitPullRequestDraft className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{project.repos?.length || 0} Repositories</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>สร้างเมื่อ: {formatDate(project.createdAt)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="pt-3 pb-4 px-4 border-t border-gray-100 mt-auto flex gap-2">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 text-xs text-gray-600 hover:bg-blue-50/50 hover:text-[#26318c]"
+                    onClick={(e) => handleDetailClick(project, e)}
+                  >
+                    ดูรายละเอียด
+                  </Button>
+                  <Button
+                    className="flex-1 bg-[#26318c] hover:bg-[#1a2366] text-xs"
+                    disabled={analyzingId === project._id}
+                    onClick={(e) => handleAnalyze(project._id, project.groupName, e)}
+                  >
+                    {analyzingId === project._id ? "Analysing..." : "Analyze AI"}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
       <ProjectDetailModal
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setAnalyzeData(null); setSelectedProject(null); }}
@@ -305,7 +320,12 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
         isLoading={isFetchingDetail}
       />
 
-      {/* Delete Modal โค้ดเดิม */}
+      <DeleteCard
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setProjectToDelete(null); }}
+        onConfirm={confirmDeleteProject}
+        projectName={projects.find((p) => p._id === projectToDelete)?.groupName ?? ""}
+      />
     </div>
   );
 }
