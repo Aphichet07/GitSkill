@@ -264,7 +264,6 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
       month: "short",
       day: "numeric",
     });
-  // ... กรุณา Copy ฟังก์ชันเหล่านี้มาวางจุดนี้ ...
 
   const getGradeBadge = (project: ProjectData) => {
     if (!project.isAnalyzed) {
@@ -297,8 +296,6 @@ const pollAnalysisStatus = (projectId: string, projectName: string) => {
           </div>
         </div>
       )}
-
-      {/* Main Grid Content ... โค้ด Grid การ์ดโปรเจกต์เดิม ... */}
 
       <ProjectDetailModal
         isOpen={isDetailOpen}
