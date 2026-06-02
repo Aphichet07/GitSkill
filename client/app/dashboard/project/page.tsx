@@ -20,7 +20,6 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DeleteCard from "@/component/card/DeleteCard";
 import { useNotification } from "@/context/NotificationContext";
@@ -82,14 +81,15 @@ export default function ProjectPage() {
 
   useEffect(() => {
     if (!isCheckingAuth && currentUserId !== null) {
-      fetchProjects();
+      loadAllInsights();
     } else if (!isCheckingAuth && currentUserId === null) {
-      setProjects([]);
-      setLoading(false);
+      setInsights([]);
+      setPageLoading(false);
     }
   }, [currentUserId, isCheckingAuth]);
 
-  const fetchProjects = async () => {
+  //load อยากให้เป็นแบบ paralel
+  const loadAllInsights = async () => {
     try {
       setLoading(true);
       const res = await axios.get("http://localhost:8000/project/", { params: { userId: currentUserId }, withCredentials: true });
