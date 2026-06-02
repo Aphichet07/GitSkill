@@ -21,6 +21,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"; // แก้ไข: เพิ่มการ Import Button
 import DeleteCard from "@/component/card/DeleteCard";
 import { useNotification } from "@/context/NotificationContext";
 
@@ -60,39 +61,17 @@ export default function ProjectPage() {
     return Math.round(total / analyzedWithScore.length);
   })();
 
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const res: any = await axios.get("http://localhost:8000/auth/status", { withCredentials: true });
-        if (res.data.isAuthenticated) {
-          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
-          setCurrentUserId(userId);
-        } else {
-          setCurrentUserId(null);
-        }
-      } catch {
-        setCurrentUserId(null);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-    checkAuthStatus();
-  }, []);
+  // แก้ไข: ฟังก์ชัน fetchProjects รองรับการส่ง userId เข้าไปตรงๆ เพื่อทำแบบกึ่งขนานโดยไม่ต้องรอดีเลย์ State
+  const fetchProjects = async (userIdToUse?: number | null) => {
+    const targetUserId = userIdToUse !== undefined ? userIdToUse : currentUserId;
+    if (targetUserId === null) return;
 
-  useEffect(() => {
-    if (!isCheckingAuth && currentUserId !== null) {
-      loadAllInsights();
-    } else if (!isCheckingAuth && currentUserId === null) {
-      setInsights([]);
-      setPageLoading(false);
-    }
-  }, [currentUserId, isCheckingAuth]);
-
-  //load อยากให้เป็นแบบ paralel
-  const loadAllInsights = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:8000/project/", { params: { userId: currentUserId }, withCredentials: true });
+      const res = await axios.get("http://localhost:8000/project/", { 
+        params: { userId: targetUserId }, 
+        withCredentials: true 
+      });
       setProjects(res.data.data);
     } catch {
       setError("ไม่สามารถดึงข้อมูลโปรเจกต์ได้ กรุณาลองใหม่อีกครั้ง");
@@ -100,6 +79,37 @@ export default function ProjectPage() {
       setLoading(false);
     }
   };
+
+  // แก้ไข: รวมขั้นตอนการโหลดข้อมูลเริ่มต้นให้อยู่ในกระบวนการเดียวกัน (ลดการเกิด Waterfall render)
+  useEffect(() => {
+    const initializePage = async () => {
+      try {
+        setIsCheckingAuth(true);
+        setLoading(true);
+        
+        const res: any = await axios.get("http://localhost:8000/auth/status", { withCredentials: true });
+        
+        if (res.data.isAuthenticated) {
+          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          setCurrentUserId(userId);
+          // ดึงข้อมูลโปรเจกต์ต่อทันทีโดยยื่น userId ล่าสุดให้เลย ไม่ต้องรอ Re-render
+          await fetchProjects(userId);
+        } else {
+          setCurrentUserId(null);
+          setProjects([]);
+          setLoading(false);
+        }
+      } catch {
+        setCurrentUserId(null);
+        setProjects([]);
+        setLoading(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    initializePage();
+  }, []);
 
   const pollAnalysisStatus = (projectId: string, projectName: string) => {
     let attempts = 0;
@@ -121,7 +131,7 @@ export default function ProjectPage() {
           clearInterval(interval);
           setAnalyzingId(null);
           addToast(`ประมวลผลโปรเจกต์ ${projectName} เสร็จสิ้นแล้ว!`, "success");
-          fetchProjects();
+          fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
         } else if (["error", "failed"].includes(res.data.status)) {
           clearInterval(interval);
           setAnalyzingId(null);
@@ -141,7 +151,7 @@ export default function ProjectPage() {
         { withCredentials: true },
       );
       addToast(`ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`, "info");
-      await fetchProjects();
+      await fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
       pollAnalysisStatus(projectId, projectName);
     } catch (err: any) {
       setAnalyzingId(null);
@@ -169,7 +179,6 @@ export default function ProjectPage() {
     }
   };
 
-  // เปิด modelดูรายละเอียดโปรเจกต์ และถ้าโปรเจกต์นั้นวิเคราะห์แล้วก็จะดึงข้อมูลการวิเคราะห์มาแสดงด้วย
   const handleDetailClick = async (project: ProjectData, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedProject(project);
@@ -190,7 +199,7 @@ export default function ProjectPage() {
     if (!projectToDelete) return;
     try {
       await axios.delete(`http://localhost:8000/project/${projectToDelete}`, { withCredentials: true });
-      fetchProjects();
+      fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
       addToast("ลบโปรเจกต์เรียบร้อยแล้ว", "success");
     } catch {
       addToast("เกิดข้อผิดพลาดในการลบโปรเจกต์", "error");
