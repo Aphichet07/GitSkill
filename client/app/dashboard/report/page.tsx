@@ -62,7 +62,7 @@ function ReportPage() {
 
   const [isCopied, setIsCopied] = useState(false);
 
-  const [isPublic, setIsPublic] = useState(false); // ค่าเริ่มต้นเป็น Private
+  const [isPublic, setIsPublic] = useState(false); 
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
 
   const [projects, setProjects] = useState<any[]>([]);
@@ -84,9 +84,18 @@ function ReportPage() {
   const handleShare = () => {
     if (!isPublic) return;
 
-    const usernameToShare =
-      githubProfile?.username || userData?.username || "unknown";
-    const shareUrl = `${window.location.origin}/report/${usernameToShare}`;
+    let shareUrl = "";
+
+    if (selectedProjectId === "overall") {
+      const usernameToShare = githubProfile?.username || userData?.username || "unknown";
+      shareUrl = `${window.location.origin}/report/${usernameToShare}`;
+    } else {
+      const selectedProject = projects.find((p) => p._id === selectedProjectId);
+      
+      const postgresProjectId = selectedProject?.id || selectedProject?._id;
+      console.log("postgresProjectId : ",postgresProjectId)
+      shareUrl = `${window.location.origin}/public/${postgresProjectId}`;
+    }
 
     navigator.clipboard.writeText(shareUrl);
     setIsCopied(true);
@@ -109,7 +118,7 @@ function ReportPage() {
         }
 
         const url = isPublicView
-          ? `http://localhost:8000/public/github/profile/${publicUsername}`
+          ? `http://localhost:8000/user/public/github/profile/${publicUsername}`
           : "http://localhost:8000/user/github/profile";
 
         const res = await axios.get(url, {
@@ -135,10 +144,10 @@ function ReportPage() {
     setIsLoadingProfile(true);
     try {
       const url = isPublicView
-        ? `http://localhost:8000/public/profile/${publicUsername}`
-        : "http://localhost:8000/user/profile";
+        ? `http://localhost:8000/user/public/profile/{userId}`
+        : `http://localhost:8000/user/profile`;
 
-      const res = await axios.get(url, { withCredentials: !isPublicView });
+      const res = await axios.get(url, { withCredentials: !isPublicView , params: { userId: currentUserId }});
       if (res.data.success) setProfileData(res.data.data);
     } catch (error: any) {
       console.error("Fetch Data Error:", error.message);
@@ -215,7 +224,7 @@ function ReportPage() {
       setIsFetchingAnalysis(true);
       try {
         const url = isPublicView
-          ? `http://localhost:8000/public/score/projects/${selectedProjectId}/status`
+          ? `http://localhost:8000/score/public/projects/${selectedProjectId}/status`
           : `http://localhost:8000/score/projects/${selectedProjectId}/status`;
 
         const res = await axios.get(url, {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 import AuthController from "../controllers/auth.controller.js";
 import passport from "../lib/passport.js";
 const router = Router();
@@ -76,7 +76,6 @@ router.get("/status", (req: Request, res: Response) => {
       isAuthenticated: true,
       user: decodedUser,
     });
-
   } catch (error) {
     return res.status(200).json({
       isAuthenticated: false,
@@ -229,4 +228,17 @@ router.get(
     AuthController.handleCallbackGitHub(req, res);
   },
 );
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "ออกจากระบบสำเร็จ",
+  });
+});
 export default router;

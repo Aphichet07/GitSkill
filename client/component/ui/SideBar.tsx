@@ -1,12 +1,14 @@
 "use client";
-
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import LogoutCard from "@/component/card/LogoutCard";
 import {
   Binoculars,
   FolderKanban,
   Brain,
   FileUser,
-  Settings,
+  LogOut,
   UserCircle,
   ChevronLeft,
   Menu,
@@ -17,9 +19,11 @@ import Link from "next/link";
 import Logo from "@/asset/logo1.png";
 
 function Sidebar() {
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -33,6 +37,32 @@ function Sidebar() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/auth/logout",
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      console.log("response: ", response.data);
+      if (response.status === 200) {
+        setIsLogoutModalOpen(false); 
+        router.push("/");
+        router.refresh();
+      }
+    } catch (error: any) {
+      console.error(
+        "Error during logout:",
+        error.response?.data || error.message,
+      );
+    }
+  };
 
   const collapsed = isCollapsed && !isMobile;
 
@@ -172,23 +202,6 @@ function Sidebar() {
                   collapsed ? "justify-center px-0" : "px-3"
                 }`}
               >
-                <Settings
-                  size={18}
-                  strokeWidth={1.5}
-                  className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-300"
-                />
-                {!collapsed && (
-                  <span className="ml-3 text-sm font-medium whitespace-nowrap animate-fadeIn">
-                    Settings
-                  </span>
-                )}
-              </button>
-
-              <button
-                className={`group flex items-center h-10 w-full rounded-xl text-[#26318c] hover:bg-[#f8f9fa] hover:shadow-sm transition-all duration-200 ${
-                  collapsed ? "justify-center px-0" : "px-3"
-                }`}
-              >
                 <UserCircle
                   size={18}
                   strokeWidth={1.5}
@@ -197,6 +210,24 @@ function Sidebar() {
                 {!collapsed && (
                   <span className="ml-3 text-sm font-medium whitespace-nowrap animate-fadeIn">
                     Profile
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIsLogoutModalOpen(true)}
+                className={`group flex items-center h-10 w-full rounded-xl text-[#ca2143] hover:bg-[#f8f9fa] hover:shadow-sm transition-all duration-200 ${
+                  collapsed ? "justify-center px-0" : "px-3"
+                }`}
+              >
+                <LogOut
+                  size={18}
+                  strokeWidth={1.5}
+                  className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-300 "
+                />
+                {!collapsed && (
+                  <span className="ml-3 text-sm font-medium whitespace-nowrap animate-fadeIn">
+                    Log out
                   </span>
                 )}
               </button>
@@ -218,6 +249,11 @@ function Sidebar() {
           />
         </button>
       </div>
+      <LogoutCard
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }

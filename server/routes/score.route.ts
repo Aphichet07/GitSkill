@@ -2,8 +2,6 @@ import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
 import { ScoreController } from "../controllers/score.controller.js";
 
-
-
 const router = express.Router();
 /**
  * @swagger
@@ -50,14 +48,18 @@ const router = express.Router();
  *         description: ไม่พบโปรเจกต์ที่ระบุ
  */
 router.get(
-  "/projects/:userProjectId/status", 
-  verifyToken,                 
-  ScoreController.CheckAnalysisStatus
+  "/projects/:userProjectId/status",
+  verifyToken,
+  ScoreController.CheckAnalysisStatus,
+);
+router.get(
+  "/public/projects/:userProjectId/status",
+  ScoreController.CheckAnalysisStatus,
 );
 
-router.get("/test", (req, res)=>{
-    res.status(200).json({ message: "Welcome To Score!" });
-})
+router.get("/test", (req, res) => {
+  res.status(200).json({ message: "Welcome To Score!" });
+});
 
 /**
  * @swagger
@@ -93,6 +95,6 @@ router.get("/test", (req, res)=>{
  *       404:
  *         description: ไม่พบ User Project
  */
-router.post("/group/:userProjectId", verifyToken,ScoreController.AnalyzeGroup);
+router.post("/group/:userProjectId", verifyToken, ScoreController.AnalyzeGroup);
 
-export default router
+export default router;

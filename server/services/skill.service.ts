@@ -1,9 +1,14 @@
+import { generateAIInsight } from "./ai.service.js";
 import { prisma } from "../lib/prisma.js";
 import axios from "axios";
 
 const SkillService = {
   async processSkillsAfterAnalysis(userProjectId: number, userId: number) {
     try {
+      console.log("-----------------------------------------------");
+      console.log("--------------Welcome To After----------------");
+      console.log("-----------------------------------------------");
+
       const projectAnalysis = await prisma.project_analysis.findFirst({
         where: { user_project_id: userProjectId },
       });
@@ -29,6 +34,7 @@ const SkillService = {
         (a: any, b: any) => a + b,
         0,
       ) as number;
+
       const finalScore = projectAnalysis.final_score || 0;
       const qualityMultiplier = finalScore / 100;
 
@@ -111,6 +117,33 @@ const SkillService = {
         });
       }
       await this.evaluateUserBadges(userId);
+
+      try {
+        console.log("กำลังให้ AI ช่วยสรุป Insight ของโปรเจกต์ สำหรับ HR...");
+
+        const readmeContent = detailedStats?.readme || "";
+        const dependencies = detailedStats?.dependencies || "";
+
+        const aiGeneratedInsight = await generateAIInsight(
+          projectAnalysis,
+          skillRecords,
+          readmeContent,
+          dependencies,
+        );
+
+        if (aiGeneratedInsight) {
+          await prisma.project_analysis.update({
+            where: { user_project_id: userProjectId },
+            data: { insight: aiGeneratedInsight },
+          });
+          console.log("aiGeneratedInsight : ", aiGeneratedInsight);
+          console.log("สร้าง AI Insight สำเร็จ!");
+        }
+      } catch (aiError) {
+        console.error("⚠️ AI Insight generation skipped:", aiError);
+      }
+      // ==========================================
+
       console.log(`✅ อัปเดต Skills ให้ User ID: ${userId} เสร็จสิ้น`);
     } catch (error) {
       console.error("❌ SkillService Error :", error);
@@ -143,7 +176,6 @@ const SkillService = {
   },
   async evaluateUserBadges(userId: number) {
     try {
-      // 1. ดึงสกิลทั้งหมดของ User (แต้มสูงสุดล่าสุด)
       const userSkills = await prisma.userSkill.findMany({
         where: { userId: userId },
       });
@@ -236,7 +268,7 @@ const SkillService = {
     if (!user || !user.githubAccessToken) {
       throw new Error("GITHUB_TOKEN_NOT_FOUND");
     }
-    console.log("Hello form github")
+    console.log("Hello form github");
     try {
       const githubResponse = await axios.get("https://api.github.com/user", {
         headers: {
@@ -244,7 +276,7 @@ const SkillService = {
           Accept: "application/vnd.github.v3+json",
         },
       });
-      console.log("Github Response: ", githubResponse.data)
+      console.log("Github Response: ", githubResponse.data);
 
       return {
         username: githubResponse.data.login,
@@ -261,6 +293,66 @@ const SkillService = {
       }
       throw new Error("GITHUB_API_ERROR");
     }
+  },
+  async getPublicProjectData(projectId: string) {
+    const project = await prisma.userProject.findFirst({
+      where: { mongoProjectId: projectId },
+      include: {
+        user: {
+          select: {
+            name: true,
+            githubId: true,
+          },
+        },
+        projectAnalysis: true,
+        projectSkills: true,
+        badges: {
+          include: {
+            badge: true,
+          },
+        },
+      },
+    });
+
+    if (!project) return null;
+
+    const analysis = project.projectAnalysis;
+
+    return {
+      userData: {
+        name: project.user?.name || "Unknown User",
+        avatarUrl: project.user?.githubId
+          ? `https://avatars.githubusercontent.com/${project.user.githubId}`
+          : null,
+      },
+      currentViewData: {
+        score: analysis?.final_score || 0,
+        grade: analysis?.grade || "N/A",
+        insight: analysis?.insight || "ยังไม่มีข้อมูลสรุปสำหรับโปรเจกต์นี้",
+
+        metrics: project.projectSkills
+          .filter((skill) => skill.category.toLowerCase() !== "language")
+          .map((skill) => ({
+            skill_name: skill.skill_name,
+            points: skill.points,
+          })),
+
+        languages: project.projectSkills
+          .filter((skill) => skill.category.toLowerCase() === "language")
+          .map((skill) => ({
+            skill_name: skill.skill_name,
+          })),
+
+        sources: [
+          {
+            name: project.projectName,
+            url: "#",
+            desc: "Main Repository",
+          },
+        ],
+      },
+      badges: project.badges.map((pb) => pb.badge),
+    };
   },
 };
 

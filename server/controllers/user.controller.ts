@@ -29,8 +29,8 @@ const SkillController = {
   },
   async GetUserProfile(req: Request, res: Response) {
     try {
-      // const userId = (req as any).user?.id || (req as any).userPayload?.userId;
-      const userId = 2;
+      const userId = (req as any).user?.id || (req as any).userPayload?.userId;
+      // const userId = 2;
       if (!userId) {
         return res.status(401).json({ success: false, error: "Unauthorized" });
       }
@@ -46,6 +46,47 @@ const SkillController = {
       return res.status(500).json({
         success: false,
         error: "ไม่สามารถดึงข้อมูลโปรไฟล์ได้",
+      });
+    }
+  },
+  async GetPublicUserProfile(req: Request, res: Response) {
+    try {
+      const userIdParam = req.params.userId;
+      console.log(
+        "👉 [Debug] เข้ามาถึง Controller Public แล้ว! userId:",
+        req.params.userId,
+      );
+      if (!userIdParam) {
+        return res
+          .status(400)
+          .json({ success: false, error: "กรุณาระบุ userId" });
+      }
+
+      const userId = Number(userIdParam);
+
+      if (isNaN(userId)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "รูปแบบ userId ไม่ถูกต้อง" });
+      }
+
+      const profileData = await SkillService.getUserProfileData(userId);
+
+      if (!profileData) {
+        return res
+          .status(404)
+          .json({ success: false, error: "ไม่พบข้อมูลโปรไฟล์นี้" });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: profileData,
+      });
+    } catch (error: any) {
+      console.error("❌ [SkillController - Public] Error:", error.message);
+      return res.status(500).json({
+        success: false,
+        error: "ไม่สามารถดึงข้อมูลโปรไฟล์สาธารณะได้",
       });
     }
   },
@@ -65,28 +106,58 @@ const SkillController = {
         success: true,
         data: profileData,
       });
-      
     } catch (error: any) {
       console.error("❌ [GithubController] Error:", error.message);
 
       // แปลง Error จาก Service เป็น HTTP Status ที่เหมาะสม
       if (error.message === "GITHUB_TOKEN_NOT_FOUND") {
-        return res.status(404).json({ 
-          success: false, 
-          error: "ไม่พบ GitHub Token กรุณาเชื่อมต่อ GitHub ก่อน" 
-        });
-      }
-      
-      if (error.message === "GITHUB_TOKEN_EXPIRED") {
-        return res.status(401).json({ 
-          success: false, 
-          error: "GitHub Token หมดอายุหรือไม่ถูกต้อง (Unauthorized)" 
+        return res.status(404).json({
+          success: false,
+          error: "ไม่พบ GitHub Token กรุณาเชื่อมต่อ GitHub ก่อน",
         });
       }
 
-      return res.status(500).json({ 
-        success: false, 
-        error: "เกิดข้อผิดพลาดในการดึงข้อมูลจาก GitHub" 
+      if (error.message === "GITHUB_TOKEN_EXPIRED") {
+        return res.status(401).json({
+          success: false,
+          error: "GitHub Token หมดอายุหรือไม่ถูกต้อง (Unauthorized)",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: "เกิดข้อผิดพลาดในการดึงข้อมูลจาก GitHub",
+      });
+    }
+  },
+  async GetPublicProjectReport(req: Request, res: Response) {
+    try {
+      const projectId = req.params.projectId as string; 
+
+      if (!projectId) {
+        return res.status(400).json({ success: false, error: "กรุณาระบุ Project ID" });
+      }
+
+      if (!projectId) {
+        return res.status(400).json({ success: false, error: "รูปแบบ ID ไม่ถูกต้อง" });
+      }
+
+      const reportData = await SkillService.getPublicProjectData(projectId);
+
+      if (!reportData) {
+        return res.status(404).json({ success: false, error: "ไม่พบข้อมูลโปรเจกต์นี้" });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: reportData,
+      });
+      
+    } catch (error: any) {
+      console.error("❌ [PublicController] Error:", error.message);
+      return res.status(500).json({
+        success: false,
+        error: "เกิดข้อผิดพลาดในการดึงข้อมูล",
       });
     }
   },

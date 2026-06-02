@@ -51,7 +51,6 @@ export const ScoreController = {
       return res.status(200).json(result);
 
     } catch (err: any) {
-      // จัดการ Error ตามที่ Service โยนออกมา
       if (err.message.includes("NOT_FOUND")) {
         return res.status(404).json({ error: err.message });
       }
