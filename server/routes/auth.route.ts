@@ -63,7 +63,6 @@ router.get("/", (req, res) => {
 router.get("/status", (req: Request, res: Response) => {
   try {
     const token = req.cookies.token;
-    console.log("Cookies : ",token)
     if (!token) {
       return res.status(200).json({
         isAuthenticated: false,

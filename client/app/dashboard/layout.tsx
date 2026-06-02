@@ -1,4 +1,4 @@
-
+import { NotificationProvider } from "@/context/NotificationContext";
 import Sidebar from "@/component/ui/SideBar";
 
 export default function DashboardLayout({
@@ -12,7 +12,7 @@ export default function DashboardLayout({
 
       <main className="flex-1 flex flex-col">
         <div className="p-8 h-full">
-          {children}
+          <NotificationProvider>{children}</NotificationProvider>
         </div>
       </main>
     </div>

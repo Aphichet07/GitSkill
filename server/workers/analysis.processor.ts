@@ -3,10 +3,12 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
+import SkillService from "../services/skill.service.js";
 import RepoService from "../services/repo.service.js";
 import ScoreService from "../services/score.service.js";
 import { prisma } from "../lib/prisma.js";
 import { RepoGroup } from "../models/RepoGroup.js";
+import { scanLanguageStats } from "../utils/languageScanner.js";
 
 export default async function (job: Job) {
   console.log(`⚙️ [PROCESSOR] เริ่มวิเคราะห์งาน ${job.id}`);
@@ -14,15 +16,15 @@ export default async function (job: Job) {
   let masterWorkspace = "";
 
   try {
-    await job.updateProgress(10); 
+    await job.updateProgress(10);
 
     const [user, userProject, repoGroup] = await Promise.all([
       RepoService.findUser(userId),
       prisma.userProject.findFirst({ where: { mongoProjectId, userId } }),
       RepoGroup.findById(mongoProjectId),
     ]);
-    console.log("RepoGroup : ", RepoGroup)
-    console.log("userProject : ", userProject)
+    console.log("RepoGroup : ", RepoGroup);
+    console.log("userProject : ", userProject);
 
     if (!user.githubAccessToken) throw new Error("ไม่พบ GitHub Token");
     if (!userProject) throw new Error("ไม่พบโปรเจกต์ใน Postgres");
@@ -30,8 +32,10 @@ export default async function (job: Job) {
 
     await job.updateProgress(30);
 
-    masterWorkspace = await fs.mkdtemp(path.join(os.tmpdir(), `portfolio_master_${Date.now()}_`));
-    console.log("Hello Start downloading")
+    masterWorkspace = await fs.mkdtemp(
+      path.join(os.tmpdir(), `portfolio_master_${Date.now()}_`),
+    );
+    console.log("Hello Start downloading");
     await Promise.all(
       repoGroup.repos.map(async (repoData) => {
         const urlParts = repoData.url.split("/");
@@ -40,13 +44,14 @@ export default async function (job: Job) {
         if (!repoOwner || !repoName) return;
 
         try {
-          const { sourceCodePath, tempDirToCleanUp } = await RepoService.downloadRepoForAnalysis(
-            user.githubAccessToken!,
-            repoOwner,
-            repoName
-          );
+          const { sourceCodePath, tempDirToCleanUp } =
+            await RepoService.downloadRepoForAnalysis(
+              user.githubAccessToken!,
+              repoOwner,
+              repoName,
+            );
           const targetPath = path.join(masterWorkspace, repoName);
-          
+
           await fs.rename(sourceCodePath, targetPath).catch(async () => {
             await fs.cp(sourceCodePath, targetPath, { recursive: true });
             await fs.rm(tempDirToCleanUp, { recursive: true, force: true });
@@ -54,14 +59,20 @@ export default async function (job: Job) {
         } catch (err) {
           console.error(`❌ ข้ามการดาวน์โหลด ${repoName}:`, err);
         }
-      })
+      }),
     );
-    console.log("Hello ending download")
+    console.log("Hello ending download");
     await job.updateProgress(60);
-    console.log("Start Analyze")
-    // 3. เริ่มวิเคราะห์โค้ด
-    const analysisResult = await ScoreService.analyzeProject(masterWorkspace);
+    console.log("Start Analyze");
 
+    const languageStats = await scanLanguageStats(masterWorkspace);
+    console.log("-------------------------------");
+    console.log("languageStats : ", languageStats);
+    console.log("-------------------------------");
+
+    const analysisResult = await ScoreService.analyzeProject(masterWorkspace);
+ 
+  
     await job.updateProgress(85);
 
     if (analysisResult.raw_scores) {
@@ -75,7 +86,10 @@ export default async function (job: Job) {
         efficiency_score: analysisResult.raw_scores.efficiencyScore,
         security_score: analysisResult.raw_scores.securityScore,
         habit_score: analysisResult.raw_scores.habitScore,
-        detailed_stats: analysisResult.detailed_stats ?? {},
+        detailed_stats: {
+          ...(analysisResult.detailed_stats as object || {}),
+          languages: languageStats 
+        },
         insight: analysisResult.insight,
         analyzed_at: new Date(),
       };
@@ -86,19 +100,26 @@ export default async function (job: Job) {
         create: { user_project_id: userProject.id, ...scorePayload },
       });
       await RepoGroup.findByIdAndUpdate(repoGroup._id, { isAnalyzed: true });
+
+      await SkillService.processSkillsAfterAnalysis(userProject.id, userId);
     }
 
     await job.updateProgress(100);
-    console.log("Result : ", analysisResult)
-    return { success: true, groupName: repoGroup.groupName, score: analysisResult.finalScore };
-
+    console.log("Result : ", analysisResult);
+    return {
+      success: true,
+      groupName: repoGroup.groupName,
+      score: analysisResult.finalScore,
+    };
   } catch (error: any) {
     throw new Error(`Analysis Pipeline Failed: ${error.message}`);
   } finally {
     if (masterWorkspace) {
-      await fs.rm(masterWorkspace, { recursive: true, force: true }).catch((err) => {
-        console.error("Failed to clean up workspace:", err);
-      });
+      await fs
+        .rm(masterWorkspace, { recursive: true, force: true })
+        .catch((err) => {
+          console.error("Failed to clean up workspace:", err);
+        });
     }
   }
 }
