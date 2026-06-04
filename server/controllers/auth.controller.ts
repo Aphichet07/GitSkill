@@ -85,7 +85,7 @@ const AuthController = {
 
   handleCallbackGitHub: (req: Request, res: Response) => {
     const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-
+    console.log("FRONTEND_URL: ", FRONTEND_URL)
     try {
       if (!req.user) {
         return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
