@@ -6,6 +6,9 @@ import axios from "axios";
 import { Star, Code2, CheckCircle2, RefreshCw } from "lucide-react";
 import { CreateProjectModal } from "@/component/modals/CreateProjectModal";
 
+// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface RepoData {
   id: number;
   name: string;
@@ -51,7 +54,8 @@ export default function Dashboard() {
       }
 
       // ถ้าไม่มี Cache หรือกดบังคับ Refresh ให้ยิง API
-      const res = await axios.get(`http://localhost:8000/repo`, {
+      // ใส่ Type ให้ Axios ป้องกัน TypeScript โวยวายตอน Build
+      const res = await axios.get<{ data?: RepoData[] } | any>(`${API_BASE_URL}/repo`, {
         withCredentials: true,
       });
 
@@ -73,7 +77,8 @@ export default function Dashboard() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res: any = await axios.get("http://localhost:8000/auth/status", {
+        // ใส่ Type ให้ Axios
+        const res = await axios.get<{ isAuthenticated: boolean; user?: any; userId?: number }>(`${API_BASE_URL}/auth/status`, {
           withCredentials: true,
         });
 
@@ -103,7 +108,7 @@ export default function Dashboard() {
   }, [isLoginGithub, currentUserId, handleFetchRepo]);
 
   const handleAuthGithub = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    window.location.href = "http://localhost:8000/auth/github";
+    window.location.href = `${API_BASE_URL}/auth/github`;
   };
 
   const toggleSelection = (id: number) => {
