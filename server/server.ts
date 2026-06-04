@@ -7,12 +7,17 @@ import router from "./routes/route.js";
 import passport from "./lib/passport.js";
 import connectMongo from "./lib/mongo.js";
 import { swaggerSpec } from "./lib/swagger.js";
-import swaggerUi from 'swagger-ui-express';
+import swaggerUi from "swagger-ui-express";
 
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://gitskill-frontend.vercel.app"],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -22,7 +27,7 @@ app.use(
     saveUninitialized: false,
   }),
 );
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(passport.initialize());
 app.use(passport.session());
 connectMongo();
