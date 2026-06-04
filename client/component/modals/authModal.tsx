@@ -30,9 +30,9 @@ function AuthModal({ onClose }: AuthModalProps) {
       const requestBody = isLoggingIn
         ? { email, password }
         : { email, password, username };
-
+      console.log("API_BASE_URL : ", API_BASE_URL)
       const res : any = await axios.post(
-        `${API_BASE_URL}{endpoint}`,
+        `${API_BASE_URL}${endpoint}`,
         requestBody,
         {
           withCredentials: true,
