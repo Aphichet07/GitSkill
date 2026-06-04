@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://gitskill-frontend.vercel.app"],
+    origin: ["http://localhost:3000", 'https://git-skill-ek4t.vercel.app'],
     credentials: true,
   }),
 );
