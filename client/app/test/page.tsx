@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 function Test() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -22,7 +25,8 @@ function Test() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res : any = await axios.get("http://localhost:8000/auth/status", {
+        // ใส่ Type ให้ Axios
+        const res = await axios.get<{ isAuthenticated: boolean; user?: any }>(`${API_BASE_URL}/auth/status`, {
           withCredentials: true,
         });
 
@@ -65,7 +69,7 @@ function Test() {
       clearScreen();
       setLoading(true);
       setCurrentAction("Fetching User Profile (/user)");
-      const res = await axios.get("https://api.github.com/user", getHeaders());
+      const res = await axios.get<any>("https://api.github.com/user", getHeaders());
       setResultJSON(res.data);
     } catch (err: any) {
       setResultJSON(err.response?.data || err.message);
@@ -79,7 +83,7 @@ function Test() {
       clearScreen();
       setLoading(true);
       setCurrentAction("Fetching All Repos (/user/repos)");
-      const res = await axios.get("https://api.github.com/user/repos", {
+      const res = await axios.get<any>("https://api.github.com/user/repos", {
         ...getHeaders(),
         params: { sort: "updated", per_page: 5 },
       });
@@ -96,7 +100,7 @@ function Test() {
       clearScreen();
       setLoading(true);
       setCurrentAction(`Fetching Repo Info (/repos/${owner}/${repo})`);
-      const res = await axios.get(
+      const res = await axios.get<any>(
         `https://api.github.com/repos/${owner}/${repo}`,
         getHeaders(),
       );
@@ -113,13 +117,13 @@ function Test() {
       clearScreen();
       setLoading(true);
       setCurrentAction("Fetching Repo Tree (Git Trees)");
-      const repoInfo = await axios.get(
+      const repoInfo = await axios.get<any>(
         `https://api.github.com/repos/${owner}/${repo}`,
         getHeaders(),
       );
       const branch = repoInfo.data.default_branch;
 
-      const res = await axios.get(
+      const res = await axios.get<any>(
         `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
         getHeaders(),
       );
@@ -130,6 +134,7 @@ function Test() {
       setLoading(false);
     }
   };
+
   const handleAnalyzeScore = async () => {
     try {
       clearScreen();
@@ -138,9 +143,9 @@ function Test() {
         `Analyzing & Scoring (${owner}/${repo}) ...อาจใช้เวลาสักครู่`,
       );
 
-      const url = `http://localhost:8000/api/score/analyze/${owner}/${repo}`;
+      const url = `${API_BASE_URL}/api/score/analyze/${owner}/${repo}`;
 
-      const res = await axios.post(
+      const res = await axios.post<any>(
         url,
         {},
         {
@@ -164,7 +169,7 @@ function Test() {
 
       const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
-      const res = await axios.get(url, {
+      const res = await axios.get<any>(url, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           Accept: "application/vnd.github.v3.raw",
@@ -202,7 +207,7 @@ function Test() {
 
         <button
           onClick={() => {
-            window.location.href = "http://localhost:8000/auth/github";
+            window.location.href = `${API_BASE_URL}/auth/github`;
           }}
           style={{
             ...btnStyle,
@@ -242,7 +247,7 @@ function Test() {
           <button
             onClick={async () => {
               await axios.post(
-                "http://localhost:8000/auth/logout",
+                `${API_BASE_URL}/auth/logout`,
                 {},
                 { withCredentials: true },
               );
