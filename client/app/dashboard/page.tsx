@@ -52,8 +52,6 @@ export default function Dashboard() {
         }
       }
 
-      // ถ้าไม่มี Cache หรือกดบังคับ Refresh ให้ยิง API
-      // ใส่ Type ให้ Axios ป้องกัน TypeScript โวยวายตอน Build
       const res = await axios.get<{ data?: RepoData[] } | any>(
         `${API_BASE_URL}/repo`,
         {
@@ -64,7 +62,6 @@ export default function Dashboard() {
       const fetchedData = res.data.data || res.data;
       setRepoList(fetchedData);
 
-      // บันทึกข้อมูลลง Cache
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(fetchedData));
 
       setCurrentPage(1);
@@ -135,6 +132,19 @@ export default function Dashboard() {
     });
   };
 
+  // 🚀 เพิ่ม Logic การจัดการ Select All / Deselect All
+  const isAllSelected =
+    repoList.length > 0 && selectedIds.length === repoList.length;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds([]); // ยกเลิกการเลือกทั้งหมด
+    } else {
+      const allIds = repoList.map((repo) => repo.id); // เลือกทั้งหมด
+      setSelectedIds(allIds);
+    }
+  };
+
   const handleProjectCreatedSuccess = () => {
     setSelectedIds([]);
     router.push("/dashboard/project");
@@ -165,7 +175,6 @@ export default function Dashboard() {
 
       <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-[#eaeaea] shadow-sm min-h-[60vh] flex flex-col">
         {isCheckingAuth ? (
-          // สถานะกำลังเช็ค Auth
           <div className="flex flex-col items-center justify-center m-auto py-20">
             <RefreshCw className="h-10 w-10 text-[#26318c] animate-spin mb-4" />
             <p className="text-gray-500 font-medium">
@@ -173,7 +182,6 @@ export default function Dashboard() {
             </p>
           </div>
         ) : !isLoginGithub ? (
-          // ยังไม่ได้ Login
           <div className="flex flex-col items-center py-20 text-center m-auto animate-in fade-in duration-500">
             <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
               <span className="text-2xl">🔗</span>
@@ -191,7 +199,6 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          // Login แล้ว
           <div className="flex-1 flex flex-col animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
               <div>
@@ -210,6 +217,20 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
+                {/* 🚀 ปุ่ม Select All / Deselect All */}
+                {repoList.length > 0 && (
+                  <button
+                    onClick={handleSelectAll}
+                    className={`px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-xl transition-all font-medium ${
+                      isAllSelected
+                        ? "bg-[#26318c]/10 border-[#26318c] text-[#26318c] hover:bg-[#26318c]/20"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {isAllSelected ? "Deselect All" : "Select All"}
+                  </button>
+                )}
+
                 {selectedIds.length > 0 && (
                   <>
                     <button
@@ -227,7 +248,7 @@ export default function Dashboard() {
                   </>
                 )}
                 <button
-                  onClick={() => handleFetchRepo(true)} // ส่ง true เพื่อบังคับโหลดข้าม Cache
+                  onClick={() => handleFetchRepo(true)}
                   disabled={loading}
                   className="px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center bg-[#26318c] hover:bg-[#1a2366] text-white rounded-xl shadow-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
@@ -239,7 +260,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Loading Indicator for Repos */}
+            {/* Loading Indicator */}
             {loading && repoList.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#26318c] mb-4"></div>
@@ -248,7 +269,6 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : repoList.length === 0 ? (
-              // Empty State กรณีไม่มี Repo
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
                 <Code2 className="w-12 h-12 text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium text-gray-700">
