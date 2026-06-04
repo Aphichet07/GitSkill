@@ -17,7 +17,6 @@ import DescribeCard from "@/component/card/describeCard";
 import PointCard from "@/component/card/pointCard";
 import TechStackCard from "@/component/card/techStackCard";
 
-// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const SKILL_DESCRIPTIONS: Record<string, string> = {
@@ -40,7 +39,6 @@ const SKILL_ICONS: Record<string, string> = {
   "Good Habit": "/badges/convenience.png",
 };
 
-// ─── คอมโพเนนต์ตัวช่วยลดโค้ดซ้ำ (Section Header) ───
 function SectionHeader({
   title,
   subtitle,
@@ -73,7 +71,7 @@ export default function PublicProjectReportPage({
   const [reportData, setReportData] = useState<any>(null);
   const [badges, setBadges] = useState<any[]>([]);
   const [repos, setRepos] = useState<any[]>([]);
-  const [languages, setLanguages] = useState<any[]>([]); // ✅ เพิ่ม State สำหรับภาษา
+  const [languages, setLanguages] = useState<any[]>([]); 
 
   const [isLoading, setIsLoading] = useState(true);
   const [showAllSources, setShowAllSources] = useState(false);
@@ -83,7 +81,6 @@ export default function PublicProjectReportPage({
   const fetchPublicProject = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 1. ดึงข้อมูล Report หลัก
       const url = `${API_BASE_URL}/user/public/project/${projectId}`;
       const res = await axios.get<{ success: boolean; data: any }>(url);
 
@@ -91,7 +88,6 @@ export default function PublicProjectReportPage({
         const report = res.data.data;
         setReportData(report);
 
-        // เซ็ตค่าเริ่มต้นเผื่อไว้
         if (report.badges) setBadges(report.badges);
         if (report.currentViewData?.sources)
           setRepos(report.currentViewData.sources);
@@ -100,7 +96,6 @@ export default function PublicProjectReportPage({
 
         let fetchedUserId = report.userData?.id;
 
-        // 2. ดึงข้อมูล Project เพื่อเอา Repos และสกัดภาษาออกมา (Main Stack)
         try {
           const projectRes = await axios.get<{ data?: any } | any>(
             `${API_BASE_URL}/project/${projectId}`,
@@ -108,7 +103,7 @@ export default function PublicProjectReportPage({
           const projectData = projectRes.data.data || projectRes.data;
 
           if (projectData) {
-            fetchedUserId = fetchedUserId || projectData.userId; // ✅ เก็บ userId ไปดึง Badge ต่อ
+            fetchedUserId = fetchedUserId || projectData.userId; 
 
             if (projectData.repos && projectData.repos.length > 0) {
               const formattedRepos = projectData.repos.map((repo: any) => ({
@@ -118,7 +113,6 @@ export default function PublicProjectReportPage({
               }));
               setRepos(formattedRepos);
 
-              // ✅ สกัดภาษาจาก Repos เหมือนในหน้า Private
               const uniqueLangs = Array.from(
                 new Set(
                   projectData.repos.map((r: any) => r.language).filter(Boolean),
@@ -133,14 +127,13 @@ export default function PublicProjectReportPage({
           console.warn("⚠️ ไม่สามารถดึงข้อมูล Repos ได้:", err);
         }
 
-        // 3. ยิง API ขอข้อมูล Badges แยกต่างหาก โดยใช้ userId ที่ได้มาจาก Project
         if (fetchedUserId) {
           try {
             const profileRes = await axios.get<{ success: boolean; data: any }>(
               `${API_BASE_URL}/user/public/profile/${fetchedUserId}`,
             );
             if (profileRes.data.success && profileRes.data.data.badges) {
-              setBadges(profileRes.data.data.badges); // ✅ เซ็ต Badges ลง State
+              setBadges(profileRes.data.data.badges); 
             }
           } catch (err) {
             console.warn("⚠️ ไม่สามารถดึงข้อมูล Badges ได้:", err);
@@ -175,7 +168,6 @@ export default function PublicProjectReportPage({
     );
   }
 
-  // ✅ ดึงเฉพาะ userData และ currentViewData ปล่อยให้ badges และ languages ใช้จาก State แทน
   const { userData, currentViewData } = reportData;
 
   // คำนวณ Sources ที่จะนำมาแสดงตาม state การพับ/ขยาย

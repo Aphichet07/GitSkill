@@ -37,8 +37,8 @@ const AuthController = {
       }
       res.cookie("token", user.accessToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
         maxAge: 24 * 60 * 60 * 1000, // 1 วัน
       });
       res
@@ -85,7 +85,7 @@ const AuthController = {
 
   handleCallbackGitHub: (req: Request, res: Response) => {
     const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-    console.log("FRONTEND_URL: ", FRONTEND_URL)
+    console.log("FRONTEND_URL: ", FRONTEND_URL);
     try {
       if (!req.user) {
         return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
@@ -98,7 +98,7 @@ const AuthController = {
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "none",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
