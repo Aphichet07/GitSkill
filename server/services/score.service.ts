@@ -510,20 +510,33 @@ const ScoreService = {
       //   CHANGELOG.md / CONTRIBUTING.md → +1  (มี history หรือ guide สำหรับ contributor)
       let docScore = 0;
       const readmeName = rootFiles.find((f) => f.toLowerCase() === "readme.md");
+      
       if (readmeName) {
-        const stat = await fs.stat(path.join(sourceCodePath, readmeName));
-        if (stat.size > 3000) docScore += 7;
-        else if (stat.size > 1000) docScore += 5;
-        else if (stat.size > 200) docScore += 3;
-        else docScore += 1;
+        const readmePath = path.join(sourceCodePath, readmeName);
+        const stat = await fs.stat(readmePath);
+        
+        // อ่านเนื้อหาและทำให้เป็นตัวพิมพ์เล็กเพื่อสแกนหา Keyword
+        const readmeContent = await fs.readFile(readmePath, "utf-8");
+        const lowerContent = readmeContent.toLowerCase();
+        
+        // เช็คว่ามีการสอนติดตั้ง (Setup) หรือสอนใช้งาน (Usage) หรือไม่
+        const hasSetup = /(install|setup|getting started|run|npm|yarn|docker)/.test(lowerContent);
+        const hasUsage = /(usage|example|api|how to use|endpoint)/.test(lowerContent);
+
+        // ต้องมีทั้งขนาดที่เหมาะสมและ Keyword ที่สำคัญถึงจะได้คะแนนระดับสูง
+        if (stat.size > 2000 && hasSetup && hasUsage) {
+          docScore += 7;
+        } else if (stat.size > 1000 && (hasSetup || hasUsage)) {
+          docScore += 5;
+        } else if (stat.size > 200) {
+          docScore += 3;
+        } else {
+          docScore += 1;
+        }
       }
+
       if (lowerRootFiles.some((f) => f.includes("license"))) docScore += 2;
-      if (
-        lowerRootFiles.some((f) =>
-          ["changelog.md", "contributing.md"].includes(f),
-        )
-      )
-        docScore += 1;
+      if (lowerRootFiles.some((f) => ["changelog.md", "contributing.md"].includes(f))) docScore += 1;
 
       // ── Architecture score /10 ───────────────────────────────────────────
       // เกณฑ์:

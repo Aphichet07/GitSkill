@@ -7,7 +7,6 @@ import {
   FolderGit2,
   Calendar,
   GitPullRequestDraft,
-  Sparkles,
   CheckCircle2,
   Trash2,
   TrendingUp,
@@ -21,13 +20,16 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; // แก้ไข: เพิ่มการ Import Button
+import { Button } from "@/components/ui/button"; 
 import DeleteCard from "@/component/card/DeleteCard";
 import { useNotification } from "@/context/NotificationContext";
 
 import StatCard from "./Statcard";
 import ProjectDetailModal from "./projectdetail";
 import { ProjectData, AnalysisData } from "./type";
+
+// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ProjectPage() {
   const router = useRouter();
@@ -61,14 +63,14 @@ export default function ProjectPage() {
     return Math.round(total / analyzedWithScore.length);
   })();
 
-  // แก้ไข: ฟังก์ชัน fetchProjects รองรับการส่ง userId เข้าไปตรงๆ เพื่อทำแบบกึ่งขนานโดยไม่ต้องรอดีเลย์ State
   const fetchProjects = async (userIdToUse?: number | null) => {
     const targetUserId = userIdToUse !== undefined ? userIdToUse : currentUserId;
     if (targetUserId === null) return;
 
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:8000/project/", { 
+      // เพิ่ม Type ให้ตรงนี้
+      const res = await axios.get<{ data: ProjectData[] }>(`${API_BASE_URL}/project/`, { 
         params: { userId: targetUserId }, 
         withCredentials: true 
       });
@@ -80,19 +82,21 @@ export default function ProjectPage() {
     }
   };
 
-  // แก้ไข: รวมขั้นตอนการโหลดข้อมูลเริ่มต้นให้อยู่ในกระบวนการเดียวกัน (ลดการเกิด Waterfall render)
   useEffect(() => {
     const initializePage = async () => {
       try {
         setIsCheckingAuth(true);
         setLoading(true);
         
-        const res: any = await axios.get("http://localhost:8000/auth/status", { withCredentials: true });
+        // เพิ่ม Type ป้องกัน unknown object
+        const res = await axios.get<{isAuthenticated: boolean; user?: {id?: number; userId?: number}; userId?: number}>(
+          `${API_BASE_URL}/auth/status`, 
+          { withCredentials: true }
+        );
         
         if (res.data.isAuthenticated) {
           const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
-          setCurrentUserId(userId);
-          // ดึงข้อมูลโปรเจกต์ต่อทันทีโดยยื่น userId ล่าสุดให้เลย ไม่ต้องรอ Re-render
+          setCurrentUserId(userId ?? null);
           await fetchProjects(userId);
         } else {
           setCurrentUserId(null);
@@ -109,6 +113,7 @@ export default function ProjectPage() {
     };
 
     initializePage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pollAnalysisStatus = (projectId: string, projectName: string) => {
@@ -123,15 +128,15 @@ export default function ProjectPage() {
         return;
       }
       try {
-        const res = await axios.get(
-          `http://localhost:8000/score/projects/${projectId}/status`,
+        const res = await axios.get<{ status: string }>(
+          `${API_BASE_URL}/score/projects/${projectId}/status`,
           { params: { userId: currentUserId }, withCredentials: true },
         );
         if (res.data.status === "completed") {
           clearInterval(interval);
           setAnalyzingId(null);
           addToast(`ประมวลผลโปรเจกต์ ${projectName} เสร็จสิ้นแล้ว!`, "success");
-          fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
+          fetchProjects(); 
         } else if (["error", "failed"].includes(res.data.status)) {
           clearInterval(interval);
           setAnalyzingId(null);
@@ -146,12 +151,12 @@ export default function ProjectPage() {
     setAnalyzingId(projectId);
     try {
       await axios.post(
-        `http://localhost:8000/score/group/${projectId}`,
+        `${API_BASE_URL}/score/group/${projectId}`,
         { userId: currentUserId },
         { withCredentials: true },
       );
       addToast(`ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`, "info");
-      await fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
+      await fetchProjects(); 
       pollAnalysisStatus(projectId, projectName);
     } catch (err: any) {
       setAnalyzingId(null);
@@ -165,12 +170,13 @@ export default function ProjectPage() {
   const fetchAnalyze = async (projectId: string) => {
     setIsFetchingDetail(true);
     try {
-      const res = await axios.get(
-        `http://localhost:8000/score/projects/${projectId}/status`,
+      // เพิ่ม Type สำหรับรองรับ AnalysisData
+      const res = await axios.get<{ status: string; data?: AnalysisData }>(
+        `${API_BASE_URL}/score/projects/${projectId}/status`,
         { params: { userId: currentUserId }, withCredentials: true },
       );
       setAnalyzeData(
-        res.data.status === "completed" ? res.data.data : { status: res.data.status }
+        res.data.status === "completed" && res.data.data ? res.data.data : ({ status: res.data.status } as any)
       );
     } catch {
       setAnalyzeData(null);
@@ -198,8 +204,8 @@ export default function ProjectPage() {
   const confirmDeleteProject = async () => {
     if (!projectToDelete) return;
     try {
-      await axios.delete(`http://localhost:8000/project/${projectToDelete}`, { withCredentials: true });
-      fetchProjects(); // แก้ไขฟังก์ชันให้ถูกต้อง
+      await axios.delete(`${API_BASE_URL}/project/${projectToDelete}`, { withCredentials: true });
+      fetchProjects(); 
       addToast("ลบโปรเจกต์เรียบร้อยแล้ว", "success");
     } catch {
       addToast("เกิดข้อผิดพลาดในการลบโปรเจกต์", "error");

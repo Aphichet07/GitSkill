@@ -4,68 +4,67 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import {
-    FolderGit2,
-    BarChart3,
-    ShieldCheck,
-    Zap,
-    FileCode2,
-    GitMerge,
-    TestTube2,
-    BookOpen,
-    Wrench,
-    Trophy,
-    CheckCircle2,
-    AlertCircle,
-    TrendingUp,
-    ChevronDown,
-    ChevronUp,
-    } from "lucide-react";
+  FolderGit2,
+  BarChart3,
+  ShieldCheck,
+  Zap,
+  FileCode2,
+  GitMerge,
+  TestTube2,
+  BookOpen,
+  Wrench,
+  Trophy,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
-    import {
-    Card,
-    CardHeader,
-    CardTitle,
-    CardContent,
-    } from "@/components/ui/card";
-
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface ProjectData {
-    _id: string;
-    groupName: string;
-    repos: any[];
-    createdAt: string;
-    isAnalyzed: boolean;
-    grade?: string;
+  _id: string;
+  groupName: string;
+  repos: any[];
+  createdAt: string;
+  isAnalyzed: boolean;
+  grade?: string;
 }
 
 interface ScoreAnalysis {
-    grade: string;
-    final_score: number;
-    doc_score: number;
-    arch_score: number;
-    test_ci_score: number;
-    clean_code_score: number;
-    efficiency_score: number;
-    security_score: number;
-    habit_score: number;
-    insight: string;
-    detailed_stats: {
+  grade: string;
+  final_score: number;
+  doc_score: number;
+  arch_score: number;
+  test_ci_score: number;
+  clean_code_score: number;
+  efficiency_score: number;
+  security_score: number;
+  habit_score: number;
+  insight: string;
+  detailed_stats: {
     massiveFiles?: number;
     nestedLoopsO2?: number;
     hardcodedSecrets?: number;
     sqlInjections?: number;
     leftoverLogs?: number;
     commentRatioPercent?: number;
-    };
+  };
 }
 
 interface ProjectInsight {
-    project: ProjectData;
-    analysis: ScoreAnalysis | null;
-    loading: boolean;
+  project: ProjectData;
+  analysis: ScoreAnalysis | null;
+  loading: boolean;
 }
 
 const SCORE_METRICS = [
@@ -78,13 +77,15 @@ const SCORE_METRICS = [
   { key: "habit_score",      label: "Good Habits",   max: 15,  icon: Wrench,      color: "bg-purple-400" },
 ] as const;
 
-//คิด grade badge
+// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+//คิด grade badge
 function getGradeBadge(grade: string | undefined) {
   switch (grade) {
     case "S":
       return (
-        <Badge className="bg-linear-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
+        <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white border-none px-3 py-1 shadow-sm font-bold">
           <Trophy className="w-3 h-3 mr-1" /> Tier S
         </Badge>
       );
@@ -111,7 +112,6 @@ function getGradeBadge(grade: string | undefined) {
   }
 }
 
-
 function ScoreBar({ value, max, color }: { value: number; max: number; color: string }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
   return (
@@ -124,7 +124,6 @@ function ScoreBar({ value, max, color }: { value: number; max: number; color: st
   );
 }
 
-
 function InsightPage() {
   const router = useRouter();
 
@@ -135,17 +134,18 @@ function InsightPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [expandedId, setExpandedId]       = useState<string | null>(null);
 
-  // เอามาจาก projectpage.tsx เพื่อเช็ค login 
+  // เช็ค login
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const res: any = await axios.get("http://localhost:8000/auth/status", {
-          withCredentials: true,
-        });
+        // แนะนำให้ใส่ Type ตรงๆ เพื่อลดปัญหาในอนาคต
+        const res = await axios.get<{isAuthenticated: boolean; user?: {id?: number; userId?: number}; userId?: number}>(
+          `${API_BASE_URL}/auth/status`, 
+          { withCredentials: true }
+        );
         if (res.data.isAuthenticated) {
-          const userId =
-            res.data.user?.id || res.data.userId || res.data.user?.userId;
-          setCurrentUserId(userId);
+          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          setCurrentUserId(userId ?? null);
         } else {
           setCurrentUserId(null);
         }
@@ -168,19 +168,23 @@ function InsightPage() {
     }
   }, [currentUserId, isCheckingAuth]);
 
-  //เอาโปรเจคมา 
+  //เอาโปรเจคมา
   const loadAllInsights = async () => {
     try {
       setPageLoading(true);
       setError("");
 
-      const projectRes = await axios.get("http://localhost:8000/project/", {
-        params: { userId: currentUserId },
-        withCredentials: true,
-      });
+      // แก้ไข Type ตรงนี้เพื่อไม่ให้เป็น unknown
+      const projectRes = await axios.get<{ data: ProjectData[] }>(
+        `${API_BASE_URL}/project/`, 
+        {
+          params: { userId: currentUserId },
+          withCredentials: true,
+        }
+      );
       const projects: ProjectData[] = projectRes.data.data ?? [];
 
-      // Render 
+      // Render
       setInsights(
         projects.map((p) => ({ project: p, analysis: null, loading: !!p.isAnalyzed })),
       );
@@ -192,19 +196,21 @@ function InsightPage() {
           .filter((p) => p.isAnalyzed)
           .map(async (p) => {
             try {
-              const res = await axios.get(
-                `http://localhost:8000/score/${p._id}/analyze`,
+              // แก้ไข Type ตรงนี้ด้วยเช่นกัน
+              const res = await axios.get<{ success: boolean; data: ScoreAnalysis }>(
+                `${API_BASE_URL}/score/${p._id}/analyze`,
                 { params: { userId: currentUserId }, withCredentials: true },
               );
               
               const analysis: ScoreAnalysis | null = res.data.success ? res.data.data : null;
 
               setInsights((prev) => prev.map((item) => 
-                item.project._id === p._id ? { ...item, analysis, loading: false } : item,),);
+                item.project._id === p._id ? { ...item, analysis, loading: false } : item,
+              ));
             } catch {
-
               setInsights((prev) => prev.map((item) =>
-                  item.project._id === p._id ? { ...item, loading: false }: item,),);
+                  item.project._id === p._id ? { ...item, loading: false }: item,
+              ));
             }
           }),
       );
@@ -215,7 +221,7 @@ function InsightPage() {
     }
   };
 
-//คำนวณโปรเจคที่วิเคราะห์แล้ว และคะแนนเฉลี่ย
+  //คำนวณโปรเจคที่วิเคราะห์แล้ว และคะแนนเฉลี่ย
   const analyzedInsights = insights.filter((i) => i.analysis !== null);
   const avgScore =
     analyzedInsights.length > 0
@@ -289,7 +295,7 @@ function InsightPage() {
           </div>
         )}
 
-        {/* สมมุติว่า Error*/}
+        {/* Error */}
         {!pageLoading && error && (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
             <div className="text-red-500 mb-4 bg-red-50 p-4 rounded-full">
@@ -315,7 +321,7 @@ function InsightPage() {
               กลับไปที่หน้า Projects เพื่อเริ่มวิเคราะห์ได้เลย
             </p>
             <Button
-              onClick={() => router.push("../dashboard")}
+              onClick={() => router.push("/dashboard")}
               className="bg-[#26318c] text-white px-8 py-3 rounded-xl font-medium hover:bg-[#1a2366] transition-all shadow-md"
             >
               ไปที่ Dashboard
@@ -519,7 +525,7 @@ function InsightPage() {
                             <Button
                               variant="ghost"
                               className="text-[#26318c] hover:bg-blue-50 rounded-xl text-sm"
-                              onClick={() => router.push(`/project/${project._id}`)} //ก็อปโค้ดแกมาจาก projectpage.tsx แต่พังเหมือนกัน
+                              onClick={() => router.push(`/project/${project._id}`)}
                             >
                               ดูโปรเจกต์
                             </Button>

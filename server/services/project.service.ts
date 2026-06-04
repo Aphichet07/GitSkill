@@ -62,6 +62,15 @@ const ProjectService = {
       throw new Error("Error fetching project");
     }
   },
+  async getProjectById(projectId: string) {
+    try {
+      const group = await RepoGroup.findById(projectId).lean();
+      return group || null;
+    } catch (error: any) {
+      console.error("❌ DB Error (getProjectById):", error.message);
+      throw new Error("Error fetching project by ID");
+    }
+  },
 
   async getAllProjects(userId: number): Promise<any[]> {
     try {
@@ -73,24 +82,23 @@ const ProjectService = {
         where: { userId: Number(userId) },
         select: {
           mongoProjectId: true,
-          projectAnalysis: { 
-            select: { grade: true } 
-          }
-        }
+          projectAnalysis: {
+            select: { grade: true },
+          },
+        },
       });
 
       const projectsWithStatus = projects.map((project) => {
         const matchedPgProject = pgProjects.find(
-          (pg) => pg.mongoProjectId === project._id.toString()
+          (pg) => pg.mongoProjectId === project._id.toString(),
         );
 
         return {
           ...project,
           isAnalyzed: !!project.isAnalyzed || false,
-          grade: matchedPgProject?.projectAnalysis?.grade || null, 
+          grade: matchedPgProject?.projectAnalysis?.grade || null,
         };
       });
-
 
       return projectsWithStatus;
     } catch (error) {

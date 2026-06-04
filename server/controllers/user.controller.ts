@@ -56,6 +56,7 @@ const SkillController = {
         "👉 [Debug] เข้ามาถึง Controller Public แล้ว! userId:",
         req.params.userId,
       );
+
       if (!userIdParam) {
         return res
           .status(400)
@@ -78,9 +79,22 @@ const SkillController = {
           .json({ success: false, error: "ไม่พบข้อมูลโปรไฟล์นี้" });
       }
 
+      let githubData = null;
+      try {
+        githubData = await SkillService.getProfileData(userId);
+      } catch (githubError: any) {
+        console.warn(
+          `⚠️ ไม่สามารถดึงข้อมูล GitHub ของ User ${userId} ได้:`,
+          githubError.message,
+        );
+      }
+
       return res.status(200).json({
         success: true,
-        data: profileData,
+        data: {
+          ...profileData,
+          github: githubData,
+        },
       });
     } catch (error: any) {
       console.error("❌ [SkillController - Public] Error:", error.message);
@@ -132,27 +146,33 @@ const SkillController = {
   },
   async GetPublicProjectReport(req: Request, res: Response) {
     try {
-      const projectId = req.params.projectId as string; 
+      const projectId = req.params.projectId as string;
+      console.log("====Im In====")
 
       if (!projectId) {
-        return res.status(400).json({ success: false, error: "กรุณาระบุ Project ID" });
+        return res
+          .status(400)
+          .json({ success: false, error: "กรุณาระบุ Project ID" });
       }
 
       if (!projectId) {
-        return res.status(400).json({ success: false, error: "รูปแบบ ID ไม่ถูกต้อง" });
+        return res
+          .status(400)
+          .json({ success: false, error: "รูปแบบ ID ไม่ถูกต้อง" });
       }
 
       const reportData = await SkillService.getPublicProjectData(projectId);
 
       if (!reportData) {
-        return res.status(404).json({ success: false, error: "ไม่พบข้อมูลโปรเจกต์นี้" });
+        return res
+          .status(404)
+          .json({ success: false, error: "ไม่พบข้อมูลโปรเจกต์นี้" });
       }
 
       return res.status(200).json({
         success: true,
         data: reportData,
       });
-      
     } catch (error: any) {
       console.error("❌ [PublicController] Error:", error.message);
       return res.status(500).json({

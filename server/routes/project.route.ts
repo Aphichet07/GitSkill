@@ -45,8 +45,8 @@ const router = Router();
  *         description: ไม่พบโปรเจกต์
  */
 
-router.get('/:groupName', ProjectController.getProject)
-
+// router.get('/:groupName', ProjectController.getProject)
+router.get("/:projectId", ProjectController.getProject);
 /**
  * @swagger
  * /project/:

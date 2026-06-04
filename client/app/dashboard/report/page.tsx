@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import GradeCard from "@/component/card/gradeCard";
 import ProfileCard from "@/component/card/profileCard";
@@ -15,8 +15,14 @@ import {
   Sparkles,
   Lock,
   ChevronDown,
+  Award,
+  Activity,
+  Code2,
+  Link as LinkIcon
 } from "lucide-react";
 import { useParams } from "next/navigation";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const SKILL_DESCRIPTIONS: Record<string, string> = {
   Documentation: "เอกสารโปรเจกต์ครบถ้วนและชัดเจน",
@@ -29,13 +35,13 @@ const SKILL_DESCRIPTIONS: Record<string, string> = {
 };
 
 const SKILL_ICONS: Record<string, string> = {
-  Documentation: "/badge/folder.png",
-  Architecture: "/badge/coding.png",
-  "Testing & CI": "/badge/exam-time.png",
-  "Clean Code": "/badge/webpage.png",
-  Efficiency: "/badge/lightning.png",
-  Security: "/badge/cyber-security.png",
-  "Good Habit": "/badge/convenience.png",
+  Documentation: "/badges/folder.png",
+  Architecture: "/badges/coding.png",
+  "Testing & CI": "/badges/exam-time.png",
+  "Clean Code": "/badges/webpage.png",
+  Efficiency: "/badges/lightning.png",
+  Security: "/badges/cyber-security.png",
+  "Good Habit": "/badges/convenience.png",
 };
 
 function calculateGrade(score: number): string {
@@ -44,6 +50,22 @@ function calculateGrade(score: number): string {
   if (score >= 50) return "B";
   if (score >= 35) return "C";
   return "F";
+}
+
+function SectionHeader({ title, subtitle, icon: Icon }: { title: string, subtitle?: string, icon?: React.ElementType }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      {Icon && <Icon className="w-4 h-4 text-gray-400" />}
+      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+        {title}
+        {subtitle && (
+          <span className="text-[#26318c] ml-1 lowercase tracking-normal">
+            ({subtitle})
+          </span>
+        )}
+      </h3>
+    </div>
+  );
 }
 
 function ReportPage() {
@@ -55,14 +77,12 @@ function ReportPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
-  // State Skills
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [githubProfile, setGithubProfile] = useState<any>(null);
 
   const [isCopied, setIsCopied] = useState(false);
-
-  const [isPublic, setIsPublic] = useState(false); 
+  const [isPublic, setIsPublic] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
 
   const [projects, setProjects] = useState<any[]>([]);
@@ -72,9 +92,10 @@ function ReportPage() {
   const [projectAnalysisData, setProjectAnalysisData] = useState<any>(null);
   const [isFetchingAnalysis, setIsFetchingAnalysis] = useState(false);
 
+  const [showAllSources, setShowAllSources] = useState(false);
+
   const handleToggleVisibility = async () => {
     setIsUpdatingVisibility(true);
-    // TODO: ยิง API ไปบันทึกค่าลง Database ของ User ว่าเปิด Public profile แล้ว
     setTimeout(() => {
       setIsPublic(!isPublic);
       setIsUpdatingVisibility(false);
@@ -91,9 +112,7 @@ function ReportPage() {
       shareUrl = `${window.location.origin}/report/${usernameToShare}`;
     } else {
       const selectedProject = projects.find((p) => p._id === selectedProjectId);
-      
       const postgresProjectId = selectedProject?.id || selectedProject?._id;
-      console.log("postgresProjectId : ",postgresProjectId)
       shareUrl = `${window.location.origin}/public/${postgresProjectId}`;
     }
 
@@ -118,10 +137,11 @@ function ReportPage() {
         }
 
         const url = isPublicView
-          ? `http://localhost:8000/user/public/github/profile/${publicUsername}`
-          : "http://localhost:8000/user/github/profile";
+          ? `${API_BASE_URL}/user/public/github/profile/${publicUsername}`
+          : `${API_BASE_URL}/user/github/profile`;
 
-        const res = await axios.get(url, {
+        // บังคับ Type ให้ Response
+        const res = await axios.get<{ success: boolean; data: any }>(url, {
           withCredentials: !isPublicView,
         });
 
@@ -144,10 +164,10 @@ function ReportPage() {
     setIsLoadingProfile(true);
     try {
       const url = isPublicView
-        ? `http://localhost:8000/user/public/profile/{userId}`
-        : `http://localhost:8000/user/profile`;
+        ? `${API_BASE_URL}/user/public/profile/${publicUsername}`
+        : `${API_BASE_URL}/user/profile`;
 
-      const res = await axios.get(url, { withCredentials: !isPublicView , params: { userId: currentUserId }});
+      const res = await axios.get<{ success: boolean; data: any }>(url, { withCredentials: !isPublicView });
       if (res.data.success) setProfileData(res.data.data);
     } catch (error: any) {
       console.error("Fetch Data Error:", error.message);
@@ -158,7 +178,7 @@ function ReportPage() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:8000/project/", {
+      const res = await axios.get<{ data: any[] }>(`${API_BASE_URL}/project/`, {
         params: { userId: currentUserId },
         withCredentials: true,
       });
@@ -177,16 +197,16 @@ function ReportPage() {
 
     const checkAuthStatus = async () => {
       try {
-        const res: any = await axios.get("http://localhost:8000/auth/status", {
-          withCredentials: true,
-        });
+        const res = await axios.get<{ isAuthenticated: boolean; user?: any; userId?: number }>(
+          `${API_BASE_URL}/auth/status`,
+          { withCredentials: true }
+        );
 
         if (res.data.isAuthenticated) {
           setIsAuthenticated(true);
           setUserData(res.data.user);
 
-          const userId =
-            res.data.user?.id || res.data.userId || res.data.user?.userId;
+          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
           setCurrentUserId(userId);
 
           fetchProfileData();
@@ -207,14 +227,8 @@ function ReportPage() {
   }, [isPublicView, fetchProfileData, fetchGithubProfile]);
 
   useEffect(() => {
-    if (!isCheckingAuth && currentUserId !== null && !isPublicView) {
-      fetchProjects();
-    } else if (!isCheckingAuth && currentUserId === null && !isPublicView) {
-      setProjects([]);
-    }
-  }, [currentUserId, isCheckingAuth, fetchProjects, isPublicView]);
-
-  useEffect(() => {
+    setShowAllSources(false);
+    
     if (selectedProjectId === "overall") {
       setProjectAnalysisData(null);
       return;
@@ -224,10 +238,10 @@ function ReportPage() {
       setIsFetchingAnalysis(true);
       try {
         const url = isPublicView
-          ? `http://localhost:8000/score/public/projects/${selectedProjectId}/status`
-          : `http://localhost:8000/score/projects/${selectedProjectId}/status`;
+          ? `${API_BASE_URL}/score/public/projects/${selectedProjectId}/status`
+          : `${API_BASE_URL}/score/projects/${selectedProjectId}/status`;
 
-        const res = await axios.get(url, {
+        const res = await axios.get<{ data?: any } | any>(url, {
           params: isPublicView ? {} : { userId: currentUserId },
           withCredentials: !isPublicView,
         });
@@ -252,13 +266,13 @@ function ReportPage() {
 
       if (profileData?.skills?.overallScore !== undefined) {
         overallScore = profileData.skills.overallScore;
-        overallGrade =
-          profileData.skills.overallGrade || calculateGrade(overallScore);
-      } else if (profileData?.skills?.coreMetrics) {
-        overallScore = profileData.skills.coreMetrics.reduce(
+        overallGrade = profileData.skills.overallGrade || calculateGrade(overallScore);
+      } else if (profileData?.skills?.coreMetrics && profileData.skills.coreMetrics.length > 0) {
+        const totalPoints = profileData.skills.coreMetrics.reduce(
           (sum: number, skill: any) => sum + (skill.points || 0),
           0,
         );
+        overallScore = Math.round(totalPoints / profileData.skills.coreMetrics.length);
         overallGrade = calculateGrade(overallScore);
       }
 
@@ -290,7 +304,6 @@ function ReportPage() {
     } else {
       const project = projects.find((p) => p._id === selectedProjectId);
 
-      // ดึง Repos ของโปรเจกต์นี้มาแสดงเป็น Source
       const projectSources =
         project?.repos?.map((repo: any) => ({
           name: repo.name,
@@ -326,31 +339,31 @@ function ReportPage() {
       const projectMetrics = [
         {
           skill_name: "Documentation",
-          points: res.doc_score ?? res.docScore ?? 0,
+          points: Math.round(((res.doc_score ?? res.docScore ?? 0) / 10) * 100),
         },
         {
           skill_name: "Architecture",
-          points: res.arch_score ?? res.archScore ?? 0,
+          points: Math.round(((res.arch_score ?? res.archScore ?? 0) / 10) * 100),
         },
         {
           skill_name: "Testing & CI",
-          points: res.test_ci_score ?? res.testCiScore ?? 0,
+          points: Math.round(((res.test_ci_score ?? res.testCiScore ?? 0) / 15) * 100),
         },
         {
           skill_name: "Clean Code",
-          points: res.clean_code_score ?? res.cleanCodeScore ?? 0,
+          points: Math.round(((res.clean_code_score ?? res.cleanCodeScore ?? 0) / 15) * 100),
         },
         {
           skill_name: "Efficiency",
-          points: res.efficiency_score ?? res.efficiencyScore ?? 0,
+          points: Math.round(((res.efficiency_score ?? res.efficiencyScore ?? 0) / 20) * 100),
         },
         {
           skill_name: "Security",
-          points: res.security_score ?? res.securityScore ?? 0,
+          points: Math.round(((res.security_score ?? res.securityScore ?? 0) / 15) * 100),
         },
         {
           skill_name: "Good Habit",
-          points: res.habit_score ?? res.habitScore ?? 0,
+          points: Math.round(((res.habit_score ?? res.habitScore ?? 0) / 10) * 100),
         },
       ];
 
@@ -404,11 +417,17 @@ function ReportPage() {
     );
   }
 
+  const visibleSources = showAllSources 
+    ? currentViewData.sources 
+    : currentViewData.sources.slice(0, 8);
+
   return (
     <div className="min-h-screen bg-white py-8 sm:py-16 px-4 sm:px-6 flex justify-center font-sans">
-      <div className="max-w-[1000px] w-full flex flex-col gap-10 sm:gap-14 relative">
+      <div className="max-w-[1100px] w-full flex flex-col gap-8 relative">
+        
+        {/* ── โซนควบคุม (Header Controls) ── */}
         {!isPublicView && (
-          <div className="flex flex-wrap items-center justify-end gap-3 mb-2 sm:-mb-6 relative z-10">
+          <div className="flex flex-wrap items-center justify-end gap-3 mb-2 relative z-10">
             {projects.length > 0 && (
               <div className="relative mr-auto sm:mr-4 mb-2 sm:mb-0 w-full sm:w-auto">
                 <select
@@ -432,33 +451,21 @@ function ReportPage() {
             )}
 
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full transition-colors">
-              <span
-                className={`text-[11px] font-medium transition-colors ${!isPublic ? "text-gray-900" : "text-gray-400"}`}
-              >
+              <span className={`text-[11px] font-medium transition-colors ${!isPublic ? "text-gray-900" : "text-gray-400"}`}>
                 <Lock className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 Private
               </span>
-
               <button
                 onClick={handleToggleVisibility}
                 disabled={isUpdatingVisibility}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50
-            ${isPublic ? "bg-[#26318c]" : "bg-gray-300"}
-          `}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${isPublic ? "bg-[#26318c]" : "bg-gray-300"}`}
                 role="switch"
                 aria-checked={isPublic}
               >
                 <span className="sr-only">Toggle Public View</span>
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
-              ${isPublic ? "translate-x-4" : "translate-x-0"}
-            `}
-                />
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? "translate-x-4" : "translate-x-0"}`} />
               </button>
-
-              <span
-                className={`text-[11px] font-medium transition-colors ${isPublic ? "text-[#26318c]" : "text-gray-400"}`}
-              >
+              <span className={`text-[11px] font-medium transition-colors ${isPublic ? "text-[#26318c]" : "text-gray-400"}`}>
                 <Globe className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 Public
               </span>
@@ -467,50 +474,43 @@ function ReportPage() {
             <button
               onClick={handleShare}
               disabled={!isPublic || isCopied}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all border
-          ${
-            !isPublic
-              ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed opacity-60"
-              : isCopied
-                ? "bg-green-50 text-green-700 border-green-200 shadow-sm"
-                : "bg-white text-gray-700 border-gray-200 hover:border-[#26318c] hover:text-[#26318c] shadow-sm cursor-pointer"
-          }`}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                !isPublic
+                  ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed opacity-60"
+                  : isCopied
+                    ? "bg-green-50 text-green-700 border-green-200 shadow-sm"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-[#26318c] hover:text-[#26318c] shadow-sm cursor-pointer"
+              }`}
             >
-              {isCopied ? (
-                <Check className="w-3.5 h-3.5" />
-              ) : (
-                <Share2 className="w-3.5 h-3.5" />
-              )}
+              {isCopied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
               {isCopied ? "คัดลอกลิงก์แล้ว" : "แชร์โปรไฟล์"}
             </button>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pb-6 border-b border-gray-100 mt-10 sm:mt-0">
-          <ProfileCard
-            imageUrl={
-              githubProfile?.avatarUrl ||
-              userData?.avatarUrl ||
-              "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbH81GnvBPAOl6QGuKAGQzFSvy-cfuht7Y9Q&s"
-            }
-            name={
-              githubProfile?.name ||
-              githubProfile?.username ||
-              userData?.name ||
-              "Unknown User"
-            }
-            position="Software Engineer"
-          />
-          <div className="shrink-0 w-full sm:w-auto flex justify-start sm:justify-end">
-            <GradeCard
-              point={currentViewData.score}
-              grade={currentViewData.grade}
+        {/* ── โซน Hero (โปรไฟล์และ Insight ยืดเต็มจอ) ── */}
+        <div className="w-full flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <ProfileCard
+              imageUrl={
+                githubProfile?.avatarUrl ||
+                userData?.avatarUrl ||
+                "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbH81GnvBPAOl6QGuKAGQzFSvy-cfuht7Y9Q&s"
+              }
+              name={
+                githubProfile?.name ||
+                githubProfile?.username ||
+                userData?.name ||
+                "Unknown User"
+              }
+              position="Software Engineer"
             />
+            <div className="shrink-0 w-full sm:w-auto flex justify-start sm:justify-end">
+              <GradeCard point={currentViewData.score} grade={currentViewData.grade} />
+            </div>
           </div>
-        </div>
 
-        <div className="w-full">
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 sm:p-6 relative overflow-hidden w-full">
             <div className="absolute top-0 right-0 p-3 text-gray-300 pointer-events-none">
               <Sparkles className="w-5 h-5" strokeWidth={1.2} />
             </div>
@@ -518,96 +518,134 @@ function ReportPage() {
           </div>
         </div>
 
-        <div className="w-full">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
-            Skill Analysis{" "}
-            {selectedProjectId !== "overall" && (
-              <span className="text-[#26318c] ml-1 lowercase">
-                (Project specific)
-              </span>
-            )}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {currentViewData.metrics.length > 0 ? (
-              currentViewData.metrics.map((skill: any, idx: number) => (
-                <PointCard
-                  key={idx}
-                  topic={skill.skill_name}
-                  explain={
-                    SKILL_DESCRIPTIONS[skill.skill_name] ||
-                    "ทักษะด้านการพัฒนาซอฟต์แวร์"
-                  }
-                  point={skill.points}
-                  iconUrl={SKILL_ICONS[skill.skill_name]}
-                />
-              ))
-            ) : (
-              <div className="col-span-full bg-white border border-gray-100 rounded-2xl p-8 text-center text-gray-400 text-sm">
-                โปรเจกต์นี้ยังไม่ได้รับการประเมินด้วย AI
-                หรืออยู่ระหว่างการประมวลผล
-              </div>
-            )}
-          </div>
-        </div>
+        {/* ── โซนเนื้อหา (Dashboard Layout) ── */}
+        <div className="w-full flex flex-col gap-8 mt-2">
+          
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-8 shadow-[0_2px_8px_rgba(0,0,0,0.01)] w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              <div className="lg:col-span-4 flex flex-col gap-8">
+                
+                {/* Achievements */}
+                <div className="w-full">
+                  <SectionHeader title="Achievements" icon={Award} />
+                  <div className="flex flex-wrap gap-3 w-full">
+                    {profileData?.badges && profileData.badges.length > 0 ? (
+                      profileData.badges.map((badge: any, idx: number) => (
+                        <div 
+                          key={idx} 
+                          className="flex flex-col items-center justify-center p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-[#26318c]/5 hover:border-[#26318c]/20 transition-all flex-1 min-w-[80px] group"
+                          title={badge.description || badge.name}
+                        >
+                          <img 
+                            src={badge.iconUrl || SKILL_ICONS[badge.name] || "/badges/coding.png"} 
+                            alt={badge.name} 
+                            className="w-8 h-8 mb-2 object-contain drop-shadow-sm group-hover:scale-110 transition-transform" 
+                          />
+                          <span className="text-[10px] font-semibold text-gray-700 text-center group-hover:text-[#26318c] transition-colors leading-tight">
+                            {badge.name}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="w-full text-center text-sm text-gray-400 py-4 bg-gray-50 rounded-xl border border-gray-100">
+                        ยังไม่มีเหรียญรางวัลสะสม
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-        <div className="w-full">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
-            Main Stack
-          </h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <div className="flex flex-wrap gap-3 sm:gap-4">
-              {currentViewData.languages.length > 0 ? (
-                currentViewData.languages.map((lang: any, idx: number) => (
-                  <TechStackCard key={idx} name={lang.skill_name} />
-                ))
-              ) : (
-                <p className="text-sm text-gray-400 w-full py-1">
-                  ไม่พบข้อมูลภาษาที่ใช้ในโปรเจกต์นี้
-                </p>
+                {/* Main Stack */}
+                <div className="w-full">
+                  <SectionHeader title="Main Stack" icon={Code2} />
+                  <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    {currentViewData.languages.length > 0 ? (
+                      currentViewData.languages.map((lang: any, idx: number) => (
+                        <TechStackCard key={idx} name={lang.skill_name} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-400 w-full py-1">ไม่พบข้อมูลภาษา</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ฝั่งขวา: Skill Analysis */}
+              <div className="lg:col-span-8 flex flex-col">
+                <SectionHeader 
+                  title="Skill Analysis" 
+                  subtitle={selectedProjectId !== "overall" ? "Project specific" : undefined} 
+                  icon={Activity} 
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                  {currentViewData.metrics.length > 0 ? (
+                    currentViewData.metrics.map((skill: any, idx: number) => (
+                      <PointCard
+                        key={idx}
+                        topic={skill.skill_name}
+                        explain={SKILL_DESCRIPTIONS[skill.skill_name] || "ทักษะด้านการพัฒนาซอฟต์แวร์"}
+                        point={skill.points}
+                        iconUrl={SKILL_ICONS[skill.skill_name]}
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-full bg-gray-50 border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm h-full flex items-center justify-center">
+                      โปรเจกต์นี้ยังไม่ได้รับการประเมินด้วย AI หรืออยู่ระหว่างการประมวลผล
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* กล่องล่าง */}
+          <div className="w-full">
+            <SectionHeader title="Verified Source" icon={LinkIcon} />
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] w-full">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                {currentViewData.sources.length > 0 ? (
+                  visibleSources.map((source: any, idx: number) => (
+                    <li 
+                      key={idx} 
+                      className="flex flex-col gap-1.5 group bg-gray-50 border border-gray-100 hover:border-[#26318c]/30 hover:bg-[#26318c]/5 rounded-xl p-3 transition-all h-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 group-hover:text-[#26318c] transition-colors line-clamp-1">
+                          {source.name}
+                        </span>
+                        {source.url !== "#" && (
+                          <a href={source.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#26318c] transition-colors shrink-0">
+                            <ExternalLinkIcon />
+                          </a>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                        {source.desc}
+                      </span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-400 p-2 col-span-full">ไม่มีข้อมูล Source Code</li>
+                )}
+              </ul>
+
+              {/* ปุ่มแสดงเพิ่มเติม */}
+              {currentViewData.sources.length > 8 && (
+                <div className="mt-6 flex justify-center border-t border-gray-50 pt-6">
+                  <button
+                    onClick={() => setShowAllSources(!showAllSources)}
+                    className="text-xs font-semibold text-gray-500 hover:text-[#26318c] border border-gray-200 hover:border-[#26318c] bg-white hover:bg-gray-50 px-6 py-2 rounded-full transition-all flex items-center gap-2"
+                  >
+                    {showAllSources ? "แสดงน้อยลง" : `แสดงเพิ่มเติม (${currentViewData.sources.length - 8} รายการ)`}
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAllSources ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
               )}
             </div>
           </div>
-        </div>
 
-        <div className="w-full">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
-            Verified Source
-          </h3>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <ul className="flex flex-col gap-4 text-sm text-gray-600">
-              {currentViewData.sources.length > 0 ? (
-                currentViewData.sources.map((source: any, idx: number) => (
-                  <li
-                    key={idx}
-                    className={`flex items-start sm:items-center gap-2 flex-wrap group ${idx > 0 ? "border-t border-gray-50 pt-4" : ""}`}
-                  >
-                    <span className="font-semibold text-gray-900 group-hover:text-[#26318c] transition-colors">
-                      {source.name}
-                    </span>
-                    {source.url !== "#" && (
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center text-gray-400 hover:text-[#26318c] transition-colors"
-                        aria-label={`Link to ${source.name}`}
-                      >
-                        <ExternalLinkIcon />
-                      </a>
-                    )}
-                    <span className="text-gray-300 mx-1 hidden sm:inline">
-                      •
-                    </span>
-                    <span className="text-gray-500 line-clamp-1">
-                      {source.desc}
-                    </span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-gray-400">ไม่มีข้อมูล Source Code</li>
-              )}
-            </ul>
-          </div>
         </div>
       </div>
     </div>
@@ -616,19 +654,8 @@ function ReportPage() {
 
 function ExternalLinkIcon() {
   return (
-    <svg
-      className="inline-block w-4 h-4 ml-0.5 align-text-bottom transition-colors"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-      />
+    <svg className="inline-block w-3.5 h-3.5 ml-0.5 align-text-bottom transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
     </svg>
   );
 }

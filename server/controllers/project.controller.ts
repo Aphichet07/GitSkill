@@ -41,26 +41,55 @@ const ProjectController = {
   },
   async getProject(req: Request, res: Response) {
     try {
-      const groupName = req.query.groupName as string;
-      const userId = req.query.userId as string;
+      // 1. ดักจับ ID จาก URL Parameter (กรณีหน้า Public ยิงมาแบบ /project/:projectId)
+      // หรือดักจาก Query (กรณีค้นหาแบบเดิม)
+      const projectId = (req.params.projectId || req.params.id) as string;
+      const groupName = req.query.groupName ? String(req.query.groupName) : "";
+      const userId = req.query.userId ? String(req.query.userId) : "";
 
-      const data = await ProjectService.getProjectByName(
-        groupName,
-        Number(userId),
-      );
-    } catch (err) {
-      console.log(err);
-      res.status(500).json({ message: err });
+      let data;
+      if (!projectId) {
+        return res.status(400).json({
+          success: false,
+          message: "กรุณาระบุ projectId หรือ groupName",
+        });
+      }
+
+      if (projectId) {
+        // ถ้ามี projectId แนบมา ให้ใช้ฟังก์ชันค้นหาด้วย ID
+        data = await ProjectService.getProjectById(projectId);
+      } else if (groupName && userId) {
+        // ถ้ามี query string มา ให้ใช้แบบเดิม
+        data = await ProjectService.getProjectByName(groupName, Number(userId));
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "กรุณาระบุ projectId หรือ groupName",
+        });
+      }
+
+      if (!data) {
+        return res
+          .status(404)
+          .json({ success: false, message: "ไม่พบข้อมูลโปรเจกต์" });
+      }
+
+      // ✅ 2. เพิ่มคำสั่งส่ง Response กลับไปให้ Frontend
+      return res.status(200).json({ success: true, data });
+    } catch (err: any) {
+      console.error("❌ Controller Error:", err.message);
+      return res.status(500).json({ success: false, message: err.message });
     }
   },
-async deleteUserProject(req: Request, res: Response) {
+
+  async deleteUserProject(req: Request, res: Response) {
     try {
       const { id } = req.params;
 
       const userPayload = req.userPayload;
-      
-      const userId = Number(userPayload?.userId); 
-      
+
+      const userId = Number(userPayload?.userId);
+
       console.log("User in Delete Project:", userPayload);
 
       if (!id || typeof id !== "string" || isNaN(userId)) {
@@ -68,7 +97,7 @@ async deleteUserProject(req: Request, res: Response) {
           .status(400)
           .json({ message: "Missing or invalid Project ID or User ID" });
       }
-      
+
       console.log("User in delete: ", userId);
       const isDeleted = await ProjectService.deleteProject(id, userId);
 

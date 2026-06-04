@@ -35,8 +35,24 @@ const SkillService = {
         0,
       ) as number;
 
-      const finalScore = projectAnalysis.final_score || 0;
-      const qualityMultiplier = finalScore / 100;
+      // ── กำหนดฐานคะแนนเต็มของแต่ละ Metric เพื่อแปลงเป็นเปอร์เซ็นต์ (Base 100) ──
+      const MAX_SCORES = {
+        doc: 10,
+        arch: 10,
+        test_ci: 15,
+        clean: 15,
+        efficiency: 20,
+        security: 15,
+        habit: 10,
+      };
+
+      // แปลงคะแนนหลักให้เป็นสัดส่วนเต็ม 100% ก่อนนำไปใช้
+      const cleanPct =
+        ((projectAnalysis.clean_code_score || 0) / MAX_SCORES.clean) * 100;
+      const effPct =
+        ((projectAnalysis.efficiency_score || 0) / MAX_SCORES.efficiency) * 100;
+      const archPct =
+        ((projectAnalysis.arch_score || 0) / MAX_SCORES.arch) * 100;
 
       for (const [lang, bytes] of Object.entries(languageStats)) {
         const languageRatio = (bytes as number) / totalBytes;
@@ -48,10 +64,9 @@ const SkillService = {
           continue;
         }
 
+        // คำนวณคะแนนภาษาจากคะแนนที่เป็นเปอร์เซ็นต์แล้ว (เต็ม 100)
         const langProficiencyScore =
-          projectAnalysis.clean_code_score * 0.4 +
-          projectAnalysis.efficiency_score * 0.4 +
-          projectAnalysis.arch_score * 0.2;
+          cleanPct * 0.4 + effPct * 0.4 + archPct * 0.2;
 
         skillRecords.push({
           userProjectId: userProjectId,
@@ -61,14 +76,29 @@ const SkillService = {
         });
       }
 
+      // ── จัดเก็บ Core Metrics โดยแปลงเป็นเปอร์เซ็นต์ทั้งหมด ──
       const coreMetrics = [
-        { name: "Documentation", score: projectAnalysis.doc_score },
-        { name: "Architecture", score: projectAnalysis.arch_score },
-        { name: "Testing & CI", score: projectAnalysis.test_ci_score },
-        { name: "Clean Code", score: projectAnalysis.clean_code_score },
-        { name: "Efficiency", score: projectAnalysis.efficiency_score },
-        { name: "Security", score: projectAnalysis.security_score },
-        { name: "Good Habit", score: projectAnalysis.habit_score },
+        {
+          name: "Documentation",
+          score: ((projectAnalysis.doc_score || 0) / MAX_SCORES.doc) * 100,
+        },
+        { name: "Architecture", score: archPct },
+        {
+          name: "Testing & CI",
+          score:
+            ((projectAnalysis.test_ci_score || 0) / MAX_SCORES.test_ci) * 100,
+        },
+        { name: "Clean Code", score: cleanPct },
+        { name: "Efficiency", score: effPct },
+        {
+          name: "Security",
+          score:
+            ((projectAnalysis.security_score || 0) / MAX_SCORES.security) * 100,
+        },
+        {
+          name: "Good Habit",
+          score: ((projectAnalysis.habit_score || 0) / MAX_SCORES.habit) * 100,
+        },
       ];
 
       for (const metric of coreMetrics) {
@@ -77,7 +107,8 @@ const SkillService = {
             userProjectId: userProjectId,
             skill_name: metric.name,
             category: "Core Metric",
-            points: metric.score,
+            // ปัดเศษให้เป็นจำนวนเต็มเพื่อความสวยงามใน Database
+            points: Math.max(0, Math.min(100, Math.round(metric.score))),
           });
         }
       }
@@ -116,6 +147,8 @@ const SkillService = {
           },
         });
       }
+
+      // ประเมิน Badge ทันทีหลังจากสรุป Skill เสร็จ
       await this.evaluateUserBadges(userId);
 
       try {
@@ -174,6 +207,7 @@ const SkillService = {
       throw new Error("ไม่สามารถดึงข้อมูลสกิลจากฐานข้อมูลได้");
     }
   },
+
   async evaluateUserBadges(userId: number) {
     try {
       const userSkills = await prisma.userSkill.findMany({
@@ -183,7 +217,8 @@ const SkillService = {
       for (const skill of userSkills) {
         let isQualified = false;
 
-        if (skill.category === "Core Metric" && skill.points >= 90) {
+        // ── ปรับเกณฑ์ Badge ใหม่ ให้สอดคล้องกับสเกลเปอร์เซ็นต์ (ฐาน 100) ──
+        if (skill.category === "Core Metric" && skill.points >= 85) {
           isQualified = true;
         } else if (skill.category === "Language" && skill.points >= 80) {
           isQualified = true;
@@ -294,12 +329,15 @@ const SkillService = {
       throw new Error("GITHUB_API_ERROR");
     }
   },
+
   async getPublicProjectData(projectId: string) {
+    console.log("Im in")
     const project = await prisma.userProject.findFirst({
       where: { mongoProjectId: projectId },
       include: {
         user: {
           select: {
+            id: true, 
             name: true,
             githubId: true,
           },
@@ -318,12 +356,26 @@ const SkillService = {
 
     const analysis = project.projectAnalysis;
 
+    let githubData = null;
+    if (project.user?.id) {
+      try {
+        githubData = await this.getProfileData(project.user.id);
+      } catch (error: any) {
+        console.warn(
+          `⚠️ ไม่สามารถดึงข้อมูล GitHub ของ User ID ${project.user.id} ในโปรเจกต์ ${projectId} ได้:`,
+          error.message,
+        );
+      }
+    }
+    console.log("Github : ",githubData)
+
     return {
       userData: {
         name: project.user?.name || "Unknown User",
         avatarUrl: project.user?.githubId
           ? `https://avatars.githubusercontent.com/${project.user.githubId}`
           : null,
+        github: githubData, 
       },
       currentViewData: {
         score: analysis?.final_score || 0,
