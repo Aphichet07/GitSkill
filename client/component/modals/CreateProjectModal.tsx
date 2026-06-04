@@ -20,7 +20,7 @@ interface CreateProjectModalProps {
   userId: string;
   onSuccess: () => void;
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export function CreateProjectModal({
   isOpen,
   onClose,
@@ -50,7 +50,7 @@ export function CreateProjectModal({
         selectedRepos,
         userId,
       };
-      const res = await axios.post(`http://localhost:8000/project/`, payload, {
+      const res = await axios.post(`${API_BASE_URL}/project/`, payload, {
         withCredentials: true,
       });
 

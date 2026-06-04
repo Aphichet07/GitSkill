@@ -27,7 +27,7 @@ interface ProjectAnalysisModalProps {
   project: any;
   analysisData: any;
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export function ProjectAnalysisModal({
   isOpen,
   onClose,

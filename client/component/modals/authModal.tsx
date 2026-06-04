@@ -6,7 +6,7 @@ import axios from "axios";
 interface AuthModalProps {
   onClose: () => void;
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 function AuthModal({ onClose }: AuthModalProps) {
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(true);
   const [email, setEmail] = useState<string>("");
@@ -32,7 +32,7 @@ function AuthModal({ onClose }: AuthModalProps) {
         : { email, password, username };
 
       const res : any = await axios.post(
-        `http://localhost:8000${endpoint}`,
+        `${API_BASE_URL}{endpoint}`,
         requestBody,
         {
           withCredentials: true,

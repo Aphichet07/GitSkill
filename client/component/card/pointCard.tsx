@@ -13,7 +13,7 @@ function PointCard({
   topic,
   explain,
   point,
-  maxPoint = 15,
+  maxPoint = 100,
   iconUrl,
 }: PointCardProps) {
   const percentage = Math.min(Math.max((point / maxPoint) * 100, 0), 100);
