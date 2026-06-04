@@ -17,7 +17,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import Logo from "@/asset/logo1.png";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 function Sidebar() {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -41,7 +41,7 @@ function Sidebar() {
   const handleLogout = async () => {
     try {
       const response = await axios.post(
-        "http://localhost:8000/auth/logout",
+        `${API_BASE_URL}/auth/logout`,
         {},
         {
           withCredentials: true,

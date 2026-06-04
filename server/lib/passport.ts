@@ -12,13 +12,13 @@ declare global {
   }
 }
 dotenv.config();
-
+const API_URI = process.env.API_URI || "http://localhost:8000";
 passport.use(
   new GitHubStrategy(
     {
       clientID: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      callbackURL: "http://localhost:8000/auth/github/callback",
+      callbackURL: `${API_URI}/auth/github/callback`,
       passReqToCallback: true,
     },
     async (
@@ -96,7 +96,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "http://localhost:8000/auth/google/callback",
+      callbackURL: `${API_URI}/auth/google/callback`,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
