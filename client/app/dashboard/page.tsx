@@ -6,7 +6,6 @@ import axios from "axios";
 import { Star, Code2, CheckCircle2, RefreshCw } from "lucide-react";
 import { CreateProjectModal } from "@/component/modals/CreateProjectModal";
 
-// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface RepoData {
@@ -55,9 +54,12 @@ export default function Dashboard() {
 
       // ถ้าไม่มี Cache หรือกดบังคับ Refresh ให้ยิง API
       // ใส่ Type ให้ Axios ป้องกัน TypeScript โวยวายตอน Build
-      const res = await axios.get<{ data?: RepoData[] } | any>(`${API_BASE_URL}/repo`, {
-        withCredentials: true,
-      });
+      const res = await axios.get<{ data?: RepoData[] } | any>(
+        `${API_BASE_URL}/repo`,
+        {
+          withCredentials: true,
+        },
+      );
 
       const fetchedData = res.data.data || res.data;
       setRepoList(fetchedData);
@@ -77,15 +79,26 @@ export default function Dashboard() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // ใส่ Type ให้ Axios
-        const res = await axios.get<{ isAuthenticated: boolean; user?: any; userId?: number }>(`${API_BASE_URL}/auth/status`, {
+        const res = await axios.get<{
+          isAuthenticated: boolean;
+          isGithubConnected: boolean;
+          user?: {
+            id?: number;
+            userId?: number;
+            provider?: string;
+          };
+          userId?: number;
+        }>(`${API_BASE_URL}/auth/status`, {
           withCredentials: true,
         });
 
-        if (res.data.isAuthenticated) {
+        if (res.data.isAuthenticated && res.data.isGithubConnected) {
           setIsLoginGithub(true);
           const userId =
-            res.data.user?.id || res.data.userId || res.data.user?.userId;
+            res.data.user?.id ??
+            res.data.user?.userId ??
+            res.data.userId ??
+            null;
           setCurrentUserId(userId);
         } else {
           setIsLoginGithub(false);
@@ -98,6 +111,7 @@ export default function Dashboard() {
         setIsCheckingAuth(false);
       }
     };
+
     checkAuthStatus();
   }, []);
 

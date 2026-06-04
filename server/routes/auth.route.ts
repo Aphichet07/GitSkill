@@ -70,10 +70,11 @@ router.get("/status", (req: Request, res: Response) => {
       });
     }
 
-    const decodedUser = jwt.verify(token, process.env.JWT_SECRET as string);
+    const decodedUser = jwt.verify(token, process.env.JWT_SECRET as string) as any;
 
     return res.status(200).json({
       isAuthenticated: true,
+      isGithubConnected: decodedUser.provider === "github", 
       user: decodedUser,
     });
   } catch (error) {

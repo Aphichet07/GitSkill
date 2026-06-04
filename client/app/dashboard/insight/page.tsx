@@ -138,7 +138,6 @@ function InsightPage() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // แนะนำให้ใส่ Type ตรงๆ เพื่อลดปัญหาในอนาคต
         const res = await axios.get<{isAuthenticated: boolean; user?: {id?: number; userId?: number}; userId?: number}>(
           `${API_BASE_URL}/auth/status`, 
           { withCredentials: true }
@@ -174,7 +173,6 @@ function InsightPage() {
       setPageLoading(true);
       setError("");
 
-      // แก้ไข Type ตรงนี้เพื่อไม่ให้เป็น unknown
       const projectRes = await axios.get<{ data: ProjectData[] }>(
         `${API_BASE_URL}/project/`, 
         {

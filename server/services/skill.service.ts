@@ -210,23 +210,44 @@ const SkillService = {
 
   async evaluateUserBadges(userId: number) {
     try {
+      // ดึงคะแนน Skill ของ User ทั้งหมด (ที่เป็น % ฐาน 100 แล้ว)
       const userSkills = await prisma.userSkill.findMany({
         where: { userId: userId },
       });
 
-      for (const skill of userSkills) {
-        let isQualified = false;
+      // ── 🎯 1. กำหนดเกณฑ์และชื่อ Badge (Dynamic Mapping) ──
+      const BADGE_CRITERIA: Record<
+        string,
+        { targetName: string; threshold: number }
+      > = {
+        Documentation: { targetName: "Docsmith Elite", threshold: 85 },
+        Architecture: { targetName: "Master Builder", threshold: 85 },
+        "Testing & CI": { targetName: "Quality Enforcer", threshold: 85 },
+        "Clean Code": { targetName: "Clean Code Artisan", threshold: 85 },
+        Security: { targetName: "Security Sentinel", threshold: 90 }, 
+        "Good Habit": { targetName: "Workflow Virtuoso", threshold: 85 },
+      };
 
-        // ── ปรับเกณฑ์ Badge ใหม่ ให้สอดคล้องกับสเกลเปอร์เซ็นต์ (ฐาน 100) ──
-        if (skill.category === "Core Metric" && skill.points >= 85) {
-          isQualified = true;
+      for (const skill of userSkills) {
+        let earnedBadgeName: string | null = null;
+
+        // ── 🎯 2. ตรวจสอบว่าผ่านเกณฑ์หรือไม่ ──
+        if (skill.category === "Core Metric") {
+          const criteria = BADGE_CRITERIA[skill.skill_name];
+          // ถ้ามีเป้าหมาย Badge และคะแนนถึง Threshold ที่ตั้งไว้
+          if (criteria && skill.points >= criteria.threshold) {
+            earnedBadgeName = criteria.targetName;
+          }
         } else if (skill.category === "Language" && skill.points >= 80) {
-          isQualified = true;
+          // แจก Badge ภาษา (เช่น "TypeScript", "Python") ถ้าคะแนนเกิน 80
+          earnedBadgeName = skill.skill_name;
         }
 
-        if (isQualified) {
+        // ── 🎯 3. แจกเหรียญลงฐานข้อมูล (ถ้าผ่านเกณฑ์และยังไม่เคยได้) ──
+        if (earnedBadgeName) {
+          // หา ID ของ Badge จากชื่อใหม่
           const targetBadge = await prisma.badge.findUnique({
-            where: { name: skill.skill_name },
+            where: { name: earnedBadgeName },
           });
 
           if (targetBadge) {
@@ -237,6 +258,7 @@ const SkillService = {
               },
             });
 
+            // ถ้ายังไม่เคยมี Badge นี้ ให้บันทึกรับเหรียญ
             if (!hasBadge) {
               await prisma.userBadge.create({
                 data: {
@@ -244,13 +266,20 @@ const SkillService = {
                   badgeId: targetBadge.id,
                 },
               });
-              console.log(`'${targetBadge.name}' ให้ User ID: ${userId}`);
+              console.log(
+                `🏆 [Achievement Unlocked] มอบ Badge '${targetBadge.name}' ให้ User ID: ${userId}`,
+              );
             }
+          } else {
+            // แจ้งเตือนกรณีลืมรัน SQL อัปเดตชื่อ Badge ใน DB
+            console.warn(
+              `⚠️ ไม่พบ Badge ชื่อ '${earnedBadgeName}' ในฐานข้อมูล กรุณาเช็ค DB`,
+            );
           }
         }
       }
     } catch (error) {
-      console.error("Badge Error :", error);
+      console.error("❌ Badge Evaluation Error:", error);
     }
   },
 
@@ -331,13 +360,13 @@ const SkillService = {
   },
 
   async getPublicProjectData(projectId: string) {
-    console.log("Im in")
+    console.log("Im in");
     const project = await prisma.userProject.findFirst({
       where: { mongoProjectId: projectId },
       include: {
         user: {
           select: {
-            id: true, 
+            id: true,
             name: true,
             githubId: true,
           },
@@ -367,7 +396,7 @@ const SkillService = {
         );
       }
     }
-    console.log("Github : ",githubData)
+    console.log("Github : ", githubData);
 
     return {
       userData: {
@@ -375,7 +404,7 @@ const SkillService = {
         avatarUrl: project.user?.githubId
           ? `https://avatars.githubusercontent.com/${project.user.githubId}`
           : null,
-        github: githubData, 
+        github: githubData,
       },
       currentViewData: {
         score: analysis?.final_score || 0,

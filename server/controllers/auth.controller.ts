@@ -62,7 +62,7 @@ const AuthController = {
     try {
       await AuthService.logout();
 
-      res.clearCookie("access_token", {
+      res.clearCookie("token", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -95,7 +95,7 @@ const AuthController = {
 
       const token = AuthService.generateAuthToken(user);
 
-      res.cookie("access_token", token, {
+      res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",

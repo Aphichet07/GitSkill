@@ -108,6 +108,7 @@ const AuthService = {
     const payload = {
       userId: user.id,
       email: user.email,
+      provider: "github", 
     };
 
     const token = jwt.sign(

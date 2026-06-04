@@ -20,7 +20,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
 import DeleteCard from "@/component/card/DeleteCard";
 import { useNotification } from "@/context/NotificationContext";
 
@@ -28,7 +28,6 @@ import StatCard from "./Statcard";
 import ProjectDetailModal from "./projectdetail";
 import { ProjectData, AnalysisData } from "./type";
 
-// Base URL สำหรับเรียก API (ดึงจาก env หรือใช้ localhost ตอน dev)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ProjectPage() {
@@ -38,7 +37,9 @@ export default function ProjectPage() {
   const [error, setError] = useState("");
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectData | null>(
+    null,
+  );
   const [analyzeData, setAnalyzeData] = useState<AnalysisData | null>(null);
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
@@ -57,23 +58,32 @@ export default function ProjectPage() {
   const pendingCount = projects.length - analyzedCount;
 
   const avgScore = (() => {
-    const analyzedWithScore = projects.filter((p) => p.isAnalyzed && p.finalScore !== undefined);
+    const analyzedWithScore = projects.filter(
+      (p) => p.isAnalyzed && p.finalScore !== undefined,
+    );
     if (!analyzedWithScore.length) return null;
-    const total = analyzedWithScore.reduce((sum, p) => sum + (p.finalScore || 0), 0);
+    const total = analyzedWithScore.reduce(
+      (sum, p) => sum + (p.finalScore || 0),
+      0,
+    );
     return Math.round(total / analyzedWithScore.length);
   })();
 
   const fetchProjects = async (userIdToUse?: number | null) => {
-    const targetUserId = userIdToUse !== undefined ? userIdToUse : currentUserId;
+    const targetUserId =
+      userIdToUse !== undefined ? userIdToUse : currentUserId;
     if (targetUserId === null) return;
 
     try {
       setLoading(true);
       // เพิ่ม Type ให้ตรงนี้
-      const res = await axios.get<{ data: ProjectData[] }>(`${API_BASE_URL}/project/`, { 
-        params: { userId: targetUserId }, 
-        withCredentials: true 
-      });
+      const res = await axios.get<{ data: ProjectData[] }>(
+        `${API_BASE_URL}/project/`,
+        {
+          params: { userId: targetUserId },
+          withCredentials: true,
+        },
+      );
       setProjects(res.data.data);
     } catch {
       setError("ไม่สามารถดึงข้อมูลโปรเจกต์ได้ กรุณาลองใหม่อีกครั้ง");
@@ -87,15 +97,17 @@ export default function ProjectPage() {
       try {
         setIsCheckingAuth(true);
         setLoading(true);
-        
+
         // เพิ่ม Type ป้องกัน unknown object
-        const res = await axios.get<{isAuthenticated: boolean; user?: {id?: number; userId?: number}; userId?: number}>(
-          `${API_BASE_URL}/auth/status`, 
-          { withCredentials: true }
-        );
-        
+        const res = await axios.get<{
+          isAuthenticated: boolean;
+          user?: { id?: number; userId?: number };
+          userId?: number;
+        }>(`${API_BASE_URL}/auth/status`, { withCredentials: true });
+
         if (res.data.isAuthenticated) {
-          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          const userId =
+            res.data.user?.id || res.data.userId || res.data.user?.userId;
           setCurrentUserId(userId ?? null);
           await fetchProjects(userId);
         } else {
@@ -113,7 +125,7 @@ export default function ProjectPage() {
     };
 
     initializePage();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pollAnalysisStatus = (projectId: string, projectName: string) => {
@@ -136,17 +148,24 @@ export default function ProjectPage() {
           clearInterval(interval);
           setAnalyzingId(null);
           addToast(`ประมวลผลโปรเจกต์ ${projectName} เสร็จสิ้นแล้ว!`, "success");
-          fetchProjects(); 
+          fetchProjects();
         } else if (["error", "failed"].includes(res.data.status)) {
           clearInterval(interval);
           setAnalyzingId(null);
-          addToast(`เกิดข้อผิดพลาดในการวิเคราะห์โปรเจกต์ ${projectName}`, "error");
+          addToast(
+            `เกิดข้อผิดพลาดในการวิเคราะห์โปรเจกต์ ${projectName}`,
+            "error",
+          );
         }
       } catch {}
     }, 5000);
   };
 
-  const handleAnalyze = async (projectId: string, projectName: string, e: React.MouseEvent) => {
+  const handleAnalyze = async (
+    projectId: string,
+    projectName: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     setAnalyzingId(projectId);
     try {
@@ -155,14 +174,19 @@ export default function ProjectPage() {
         { userId: currentUserId },
         { withCredentials: true },
       );
-      addToast(`ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`, "info");
-      await fetchProjects(); 
+      addToast(
+        `ส่งโปรเจกต์ ${projectName} เข้าสู่คิววิเคราะห์แล้ว ระบบกำลังทำงานเบื้องหลัง`,
+        "info",
+      );
+      await fetchProjects();
       pollAnalysisStatus(projectId, projectName);
     } catch (err: any) {
       setAnalyzingId(null);
       addToast(
-        err.response?.data?.error || err.response?.data?.message || "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
-        "error"
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "เกิดข้อผิดพลาดในการส่งข้อมูลเข้าคิว",
+        "error",
       );
     }
   };
@@ -176,7 +200,9 @@ export default function ProjectPage() {
         { params: { userId: currentUserId }, withCredentials: true },
       );
       setAnalyzeData(
-        res.data.status === "completed" && res.data.data ? res.data.data : ({ status: res.data.status } as any)
+        res.data.status === "completed" && res.data.data
+          ? res.data.data
+          : ({ status: res.data.status } as any),
       );
     } catch {
       setAnalyzeData(null);
@@ -185,7 +211,10 @@ export default function ProjectPage() {
     }
   };
 
-  const handleDetailClick = async (project: ProjectData, e: React.MouseEvent) => {
+  const handleDetailClick = async (
+    project: ProjectData,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
     setSelectedProject(project);
     setAnalyzeData(null);
@@ -204,8 +233,10 @@ export default function ProjectPage() {
   const confirmDeleteProject = async () => {
     if (!projectToDelete) return;
     try {
-      await axios.delete(`${API_BASE_URL}/project/${projectToDelete}`, { withCredentials: true });
-      fetchProjects(); 
+      await axios.delete(`${API_BASE_URL}/project/${projectToDelete}`, {
+        withCredentials: true,
+      });
+      fetchProjects();
       addToast("ลบโปรเจกต์เรียบร้อยแล้ว", "success");
     } catch {
       addToast("เกิดข้อผิดพลาดในการลบโปรเจกต์", "error");
@@ -224,33 +255,83 @@ export default function ProjectPage() {
 
   const getGradeBadge = (project: ProjectData) => {
     if (!project.isAnalyzed) {
-      return <Badge variant="secondary" className="text-gray-500 px-2.5 py-0.5 text-xs font-medium">Pending</Badge>;
+      return (
+        <Badge
+          variant="secondary"
+          className="text-gray-500 px-2.5 py-0.5 text-xs font-medium"
+        >
+          Pending
+        </Badge>
+      );
     }
     const configs: Record<string, { className: string; label: string }> = {
-      S: { className: "bg-gradient-to-r from-yellow-400 to-amber-500 text-white", label: "Tier S" },
+      S: {
+        className: "bg-gradient-to-r from-yellow-400 to-amber-500 text-white",
+        label: "Tier S",
+      },
       A: { className: "bg-emerald-100 text-emerald-700", label: "✅ Tier A" },
       B: { className: "bg-blue-100 text-blue-700", label: "Tier B" },
       C: { className: "bg-orange-100 text-orange-700", label: "Tier C" },
     };
     const cfg = project.grade ? configs[project.grade] : null;
-    return cfg ? <Badge className={`${cfg.className} px-2.5 py-0.5 text-xs font-bold`}>{cfg.label}</Badge> : <Badge className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-xs"><CheckCircle2 className="w-3 h-3 mr-1" /> Analyzed</Badge>;
+    return cfg ? (
+      <Badge className={`${cfg.className} px-2.5 py-0.5 text-xs font-bold`}>
+        {cfg.label}
+      </Badge>
+    ) : (
+      <Badge className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-xs">
+        <CheckCircle2 className="w-3 h-3 mr-1" /> Analyzed
+      </Badge>
+    );
   };
 
   return (
     <div className="max-w-8xl mx-auto p-4 sm:p-6 lg:p-8 relative">
       <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#26318c]">My Projects</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">จัดการและดูภาพรวมโปรเจกต์ทั้งหมดที่คุณสร้างไว้จาก GitHub Repositories</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#26318c]">
+          My Projects
+        </h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
+          จัดการและดูภาพรวมโปรเจกต์ทั้งหมดที่คุณสร้างไว้จาก GitHub Repositories
+        </p>
       </header>
 
       {/* Stats Overview */}
       {!loading && !error && projects.length > 0 && (
         <div className="mb-6 space-y-3">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <StatCard title="โปรเจกต์ทั้งหมด" value={projects.length} subtitle={`${totalRepos} repositories รวม`} icon={FolderGit2} colorClass="bg-blue-50 text-[#26318c]" />
-            <StatCard title="Repository ทั้งหมด" value={totalRepos} subtitle="รวมใน ทุก Portfolio" icon={GitBranch} colorClass="bg-purple-50 text-purple-600" />
-            <StatCard title="วิเคราะห์แล้ว" value={`${analyzedCount}/${projects.length}`} subtitle={pendingCount > 0 ? `เหลืออีก ${pendingCount} โปรเจกต์` : "ครบทุกโปรเจกต์แล้ว 🎉"} icon={CheckCircle2} colorClass="bg-emerald-50 text-emerald-600" />
-            <StatCard title="คะแนนเฉลี่ย" value={avgScore !== null ? `${avgScore}/100` : "—"} subtitle={avgScore !== null ? "จากคะแนนจริง" : "ยังไม่มีข้อมูล"} icon={TrendingUp} colorClass="bg-amber-50 text-amber-600" />
+            <StatCard
+              title="โปรเจกต์ทั้งหมด"
+              value={projects.length}
+              subtitle={`${totalRepos} repositories รวม`}
+              icon={FolderGit2}
+              colorClass="bg-blue-50 text-[#26318c]"
+            />
+            <StatCard
+              title="Repository ทั้งหมด"
+              value={totalRepos}
+              subtitle="รวมใน ทุก Portfolio"
+              icon={GitBranch}
+              colorClass="bg-purple-50 text-purple-600"
+            />
+            <StatCard
+              title="วิเคราะห์แล้ว"
+              value={`${analyzedCount}/${projects.length}`}
+              subtitle={
+                pendingCount > 0
+                  ? `เหลืออีก ${pendingCount} โปรเจกต์`
+                  : "ครบทุกโปรเจกต์แล้ว 🎉"
+              }
+              icon={CheckCircle2}
+              colorClass="bg-emerald-50 text-emerald-600"
+            />
+            <StatCard
+              title="คะแนนเฉลี่ย"
+              value={avgScore !== null ? `${avgScore}/100` : "—"}
+              subtitle={avgScore !== null ? "จากคะแนนจริง" : "ยังไม่มีข้อมูล"}
+              icon={TrendingUp}
+              colorClass="bg-amber-50 text-amber-600"
+            />
           </div>
         </div>
       )}
@@ -265,7 +346,9 @@ export default function ProjectPage() {
 
         {!loading && projects.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <h2 className="text-lg font-semibold text-slate-800">ยังไม่มีโปรเจกต์</h2>
+            <h2 className="text-lg font-semibold text-slate-800">
+              ยังไม่มีโปรเจกต์
+            </h2>
           </div>
         )}
 
@@ -275,12 +358,14 @@ export default function ProjectPage() {
               <Card
                 key={project._id}
                 className="rounded-2xl border border-gray-200 flex flex-col cursor-pointer relative transition-all duration-300 ease-out hover:border-[#26318c]/40 hover:shadow-xl hover:-translate-y-1.5 bg-white"
-                onClick={() => router.push(`/project/${project._id}`)}
               >
                 {/* Grade + Delete Button */}
                 <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
                   {getGradeBadge(project)}
-                  <button onClick={(e) => handleDeleteClick(project._id, e)} className="p-1.5 text-gray-400 hover:text-red-500">
+                  <button
+                    onClick={(e) => handleDeleteClick(project._id, e)}
+                    className="p-1.5 text-gray-400 hover:text-red-500"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -289,7 +374,9 @@ export default function ProjectPage() {
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#26318c] mb-2">
                     <FolderGit2 className="w-4 h-4" />
                   </div>
-                  <CardTitle className="text-lg font-bold truncate pr-16">{project.groupName}</CardTitle>
+                  <CardTitle className="text-lg font-bold truncate pr-16">
+                    {project.groupName}
+                  </CardTitle>
                 </CardHeader>
 
                 <CardContent className="pb-3 px-4 flex-1">
@@ -316,9 +403,13 @@ export default function ProjectPage() {
                   <Button
                     className="flex-1 bg-[#26318c] hover:bg-[#1a2366] text-xs"
                     disabled={analyzingId === project._id}
-                    onClick={(e) => handleAnalyze(project._id, project.groupName, e)}
+                    onClick={(e) =>
+                      handleAnalyze(project._id, project.groupName, e)
+                    }
                   >
-                    {analyzingId === project._id ? "Analysing..." : "Analyze AI"}
+                    {analyzingId === project._id
+                      ? "Analysing..."
+                      : "Analyze AI"}
                   </Button>
                 </CardFooter>
               </Card>
@@ -329,7 +420,11 @@ export default function ProjectPage() {
 
       <ProjectDetailModal
         isOpen={isDetailOpen}
-        onClose={() => { setIsDetailOpen(false); setAnalyzeData(null); setSelectedProject(null); }}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setAnalyzeData(null);
+          setSelectedProject(null);
+        }}
         project={selectedProject}
         analysisData={analyzeData}
         isLoading={isFetchingDetail}
@@ -337,9 +432,14 @@ export default function ProjectPage() {
 
       <DeleteCard
         isOpen={isDeleteModalOpen}
-        onClose={() => { setIsDeleteModalOpen(false); setProjectToDelete(null); }}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setProjectToDelete(null);
+        }}
         onConfirm={confirmDeleteProject}
-        projectName={projects.find((p) => p._id === projectToDelete)?.groupName ?? ""}
+        projectName={
+          projects.find((p) => p._id === projectToDelete)?.groupName ?? ""
+        }
       />
     </div>
   );

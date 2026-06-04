@@ -32,7 +32,7 @@ passport.use(
       console.log("Cookies inside passport:", req.cookies);
       try {
         const token = req.cookies.token;
-        console.log("req cookies", req.cookies.access_token);
+        console.log("req cookies", req.cookies.token);
         console.log("Cookies : ", token);
         let loggedInUserId = null;
 

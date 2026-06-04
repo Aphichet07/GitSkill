@@ -18,7 +18,7 @@ import {
   Award,
   Activity,
   Code2,
-  Link as LinkIcon
+  Link as LinkIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -52,7 +52,15 @@ function calculateGrade(score: number): string {
   return "F";
 }
 
-function SectionHeader({ title, subtitle, icon: Icon }: { title: string, subtitle?: string, icon?: React.ElementType }) {
+function SectionHeader({
+  title,
+  subtitle,
+  icon: Icon,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: React.ElementType;
+}) {
   return (
     <div className="flex items-center gap-2 mb-4">
       {Icon && <Icon className="w-4 h-4 text-gray-400" />}
@@ -108,7 +116,8 @@ function ReportPage() {
     let shareUrl = "";
 
     if (selectedProjectId === "overall") {
-      const usernameToShare = githubProfile?.username || userData?.username || "unknown";
+      const usernameToShare =
+        githubProfile?.username || userData?.username || "unknown";
       shareUrl = `${window.location.origin}/report/${usernameToShare}`;
     } else {
       const selectedProject = projects.find((p) => p._id === selectedProjectId);
@@ -140,7 +149,6 @@ function ReportPage() {
           ? `${API_BASE_URL}/user/public/github/profile/${publicUsername}`
           : `${API_BASE_URL}/user/github/profile`;
 
-        // บังคับ Type ให้ Response
         const res = await axios.get<{ success: boolean; data: any }>(url, {
           withCredentials: !isPublicView,
         });
@@ -167,7 +175,9 @@ function ReportPage() {
         ? `${API_BASE_URL}/user/public/profile/${publicUsername}`
         : `${API_BASE_URL}/user/profile`;
 
-      const res = await axios.get<{ success: boolean; data: any }>(url, { withCredentials: !isPublicView });
+      const res = await axios.get<{ success: boolean; data: any }>(url, {
+        withCredentials: !isPublicView,
+      });
       if (res.data.success) setProfileData(res.data.data);
     } catch (error: any) {
       console.error("Fetch Data Error:", error.message);
@@ -176,17 +186,24 @@ function ReportPage() {
     }
   }, [isPublicView, publicUsername]);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (userId: number) => {
+    if (!userId) return;
     try {
       const res = await axios.get<{ data: any[] }>(`${API_BASE_URL}/project/`, {
-        params: { userId: currentUserId },
+        params: { userId },
         withCredentials: true,
       });
       setProjects(res.data.data || []);
     } catch (err: any) {
       console.error("Fetch Projects Error:", err);
     }
-  }, [currentUserId]);
+  }, []); 
+
+  useEffect(() => {
+    if (!isPublicView && currentUserId) {
+      fetchProjects(currentUserId);
+    }
+  }, [currentUserId, isPublicView, fetchProjects]);
 
   useEffect(() => {
     if (isPublicView) {
@@ -197,16 +214,18 @@ function ReportPage() {
 
     const checkAuthStatus = async () => {
       try {
-        const res = await axios.get<{ isAuthenticated: boolean; user?: any; userId?: number }>(
-          `${API_BASE_URL}/auth/status`,
-          { withCredentials: true }
-        );
+        const res = await axios.get<{
+          isAuthenticated: boolean;
+          user?: any;
+          userId?: number;
+        }>(`${API_BASE_URL}/auth/status`, { withCredentials: true });
 
         if (res.data.isAuthenticated) {
           setIsAuthenticated(true);
           setUserData(res.data.user);
 
-          const userId = res.data.user?.id || res.data.userId || res.data.user?.userId;
+          const userId =
+            res.data.user?.id || res.data.userId || res.data.user?.userId;
           setCurrentUserId(userId);
 
           fetchProfileData();
@@ -228,7 +247,7 @@ function ReportPage() {
 
   useEffect(() => {
     setShowAllSources(false);
-    
+
     if (selectedProjectId === "overall") {
       setProjectAnalysisData(null);
       return;
@@ -266,13 +285,19 @@ function ReportPage() {
 
       if (profileData?.skills?.overallScore !== undefined) {
         overallScore = profileData.skills.overallScore;
-        overallGrade = profileData.skills.overallGrade || calculateGrade(overallScore);
-      } else if (profileData?.skills?.coreMetrics && profileData.skills.coreMetrics.length > 0) {
+        overallGrade =
+          profileData.skills.overallGrade || calculateGrade(overallScore);
+      } else if (
+        profileData?.skills?.coreMetrics &&
+        profileData.skills.coreMetrics.length > 0
+      ) {
         const totalPoints = profileData.skills.coreMetrics.reduce(
           (sum: number, skill: any) => sum + (skill.points || 0),
           0,
         );
-        overallScore = Math.round(totalPoints / profileData.skills.coreMetrics.length);
+        overallScore = Math.round(
+          totalPoints / profileData.skills.coreMetrics.length,
+        );
         overallGrade = calculateGrade(overallScore);
       }
 
@@ -329,7 +354,8 @@ function ReportPage() {
         return {
           score: 0,
           grade: project?.grade || "Pending",
-          insight: "โปรเจกต์นี้กำลังรอการวิเคราะห์หรือยังไม่ได้รับการประเมินผลจาก AI",
+          insight:
+            "โปรเจกต์นี้กำลังรอการวิเคราะห์หรือยังไม่ได้รับการประเมินผลจาก AI",
           metrics: [],
           languages: [],
           sources: projectSources,
@@ -343,27 +369,39 @@ function ReportPage() {
         },
         {
           skill_name: "Architecture",
-          points: Math.round(((res.arch_score ?? res.archScore ?? 0) / 10) * 100),
+          points: Math.round(
+            ((res.arch_score ?? res.archScore ?? 0) / 10) * 100,
+          ),
         },
         {
           skill_name: "Testing & CI",
-          points: Math.round(((res.test_ci_score ?? res.testCiScore ?? 0) / 15) * 100),
+          points: Math.round(
+            ((res.test_ci_score ?? res.testCiScore ?? 0) / 15) * 100,
+          ),
         },
         {
           skill_name: "Clean Code",
-          points: Math.round(((res.clean_code_score ?? res.cleanCodeScore ?? 0) / 15) * 100),
+          points: Math.round(
+            ((res.clean_code_score ?? res.cleanCodeScore ?? 0) / 15) * 100,
+          ),
         },
         {
           skill_name: "Efficiency",
-          points: Math.round(((res.efficiency_score ?? res.efficiencyScore ?? 0) / 20) * 100),
+          points: Math.round(
+            ((res.efficiency_score ?? res.efficiencyScore ?? 0) / 20) * 100,
+          ),
         },
         {
           skill_name: "Security",
-          points: Math.round(((res.security_score ?? res.securityScore ?? 0) / 15) * 100),
+          points: Math.round(
+            ((res.security_score ?? res.securityScore ?? 0) / 15) * 100,
+          ),
         },
         {
           skill_name: "Good Habit",
-          points: Math.round(((res.habit_score ?? res.habitScore ?? 0) / 10) * 100),
+          points: Math.round(
+            ((res.habit_score ?? res.habitScore ?? 0) / 10) * 100,
+          ),
         },
       ];
 
@@ -417,14 +455,13 @@ function ReportPage() {
     );
   }
 
-  const visibleSources = showAllSources 
-    ? currentViewData.sources 
+  const visibleSources = showAllSources
+    ? currentViewData.sources
     : currentViewData.sources.slice(0, 8);
 
   return (
     <div className="min-h-screen bg-white py-8 sm:py-16 px-4 sm:px-6 flex justify-center font-sans">
       <div className="max-w-[1100px] w-full flex flex-col gap-8 relative">
-        
         {/* ── โซนควบคุม (Header Controls) ── */}
         {!isPublicView && (
           <div className="flex flex-wrap items-center justify-end gap-3 mb-2 relative z-10">
@@ -451,7 +488,9 @@ function ReportPage() {
             )}
 
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full transition-colors">
-              <span className={`text-[11px] font-medium transition-colors ${!isPublic ? "text-gray-900" : "text-gray-400"}`}>
+              <span
+                className={`text-[11px] font-medium transition-colors ${!isPublic ? "text-gray-900" : "text-gray-400"}`}
+              >
                 <Lock className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 Private
               </span>
@@ -463,9 +502,13 @@ function ReportPage() {
                 aria-checked={isPublic}
               >
                 <span className="sr-only">Toggle Public View</span>
-                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? "translate-x-4" : "translate-x-0"}`} />
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? "translate-x-4" : "translate-x-0"}`}
+                />
               </button>
-              <span className={`text-[11px] font-medium transition-colors ${isPublic ? "text-[#26318c]" : "text-gray-400"}`}>
+              <span
+                className={`text-[11px] font-medium transition-colors ${isPublic ? "text-[#26318c]" : "text-gray-400"}`}
+              >
                 <Globe className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                 Public
               </span>
@@ -482,7 +525,11 @@ function ReportPage() {
                     : "bg-white text-gray-700 border-gray-200 hover:border-[#26318c] hover:text-[#26318c] shadow-sm cursor-pointer"
               }`}
             >
-              {isCopied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              {isCopied ? (
+                <Check className="w-3.5 h-3.5" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5" />
+              )}
               {isCopied ? "คัดลอกลิงก์แล้ว" : "แชร์โปรไฟล์"}
             </button>
           </div>
@@ -506,7 +553,10 @@ function ReportPage() {
               position="Software Engineer"
             />
             <div className="shrink-0 w-full sm:w-auto flex justify-start sm:justify-end">
-              <GradeCard point={currentViewData.score} grade={currentViewData.grade} />
+              <GradeCard
+                point={currentViewData.score}
+                grade={currentViewData.grade}
+              />
             </div>
           </div>
 
@@ -520,27 +570,28 @@ function ReportPage() {
 
         {/* ── โซนเนื้อหา (Dashboard Layout) ── */}
         <div className="w-full flex flex-col gap-8 mt-2">
-          
           <div className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-8 shadow-[0_2px_8px_rgba(0,0,0,0.01)] w-full">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
               <div className="lg:col-span-4 flex flex-col gap-8">
-                
                 {/* Achievements */}
                 <div className="w-full">
                   <SectionHeader title="Achievements" icon={Award} />
                   <div className="flex flex-wrap gap-3 w-full">
                     {profileData?.badges && profileData.badges.length > 0 ? (
                       profileData.badges.map((badge: any, idx: number) => (
-                        <div 
-                          key={idx} 
+                        <div
+                          key={idx}
                           className="flex flex-col items-center justify-center p-3 border border-gray-100 rounded-xl bg-gray-50 hover:bg-[#26318c]/5 hover:border-[#26318c]/20 transition-all flex-1 min-w-[80px] group"
                           title={badge.description || badge.name}
                         >
-                          <img 
-                            src={badge.iconUrl || SKILL_ICONS[badge.name] || "/badges/coding.png"} 
-                            alt={badge.name} 
-                            className="w-8 h-8 mb-2 object-contain drop-shadow-sm group-hover:scale-110 transition-transform" 
+                          <img
+                            src={
+                              badge.iconUrl ||
+                              SKILL_ICONS[badge.name] ||
+                              "/badges/coding.png"
+                            }
+                            alt={badge.name}
+                            className="w-8 h-8 mb-2 object-contain drop-shadow-sm group-hover:scale-110 transition-transform"
                           />
                           <span className="text-[10px] font-semibold text-gray-700 text-center group-hover:text-[#26318c] transition-colors leading-tight">
                             {badge.name}
@@ -560,23 +611,30 @@ function ReportPage() {
                   <SectionHeader title="Main Stack" icon={Code2} />
                   <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
                     {currentViewData.languages.length > 0 ? (
-                      currentViewData.languages.map((lang: any, idx: number) => (
-                        <TechStackCard key={idx} name={lang.skill_name} />
-                      ))
+                      currentViewData.languages.map(
+                        (lang: any, idx: number) => (
+                          <TechStackCard key={idx} name={lang.skill_name} />
+                        ),
+                      )
                     ) : (
-                      <p className="text-sm text-gray-400 w-full py-1">ไม่พบข้อมูลภาษา</p>
+                      <p className="text-sm text-gray-400 w-full py-1">
+                        ไม่พบข้อมูลภาษา
+                      </p>
                     )}
                   </div>
                 </div>
-
               </div>
 
               {/* ฝั่งขวา: Skill Analysis */}
               <div className="lg:col-span-8 flex flex-col">
-                <SectionHeader 
-                  title="Skill Analysis" 
-                  subtitle={selectedProjectId !== "overall" ? "Project specific" : undefined} 
-                  icon={Activity} 
+                <SectionHeader
+                  title="Skill Analysis"
+                  subtitle={
+                    selectedProjectId !== "overall"
+                      ? "Project specific"
+                      : undefined
+                  }
+                  icon={Activity}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
                   {currentViewData.metrics.length > 0 ? (
@@ -584,19 +642,22 @@ function ReportPage() {
                       <PointCard
                         key={idx}
                         topic={skill.skill_name}
-                        explain={SKILL_DESCRIPTIONS[skill.skill_name] || "ทักษะด้านการพัฒนาซอฟต์แวร์"}
+                        explain={
+                          SKILL_DESCRIPTIONS[skill.skill_name] ||
+                          "ทักษะด้านการพัฒนาซอฟต์แวร์"
+                        }
                         point={skill.points}
                         iconUrl={SKILL_ICONS[skill.skill_name]}
                       />
                     ))
                   ) : (
                     <div className="col-span-full bg-gray-50 border border-gray-100 rounded-xl p-10 text-center text-gray-400 text-sm h-full flex items-center justify-center">
-                      โปรเจกต์นี้ยังไม่ได้รับการประเมินด้วย AI หรืออยู่ระหว่างการประมวลผล
+                      โปรเจกต์นี้ยังไม่ได้รับการประเมินด้วย AI
+                      หรืออยู่ระหว่างการประมวลผล
                     </div>
                   )}
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -607,8 +668,8 @@ function ReportPage() {
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                 {currentViewData.sources.length > 0 ? (
                   visibleSources.map((source: any, idx: number) => (
-                    <li 
-                      key={idx} 
+                    <li
+                      key={idx}
                       className="flex flex-col gap-1.5 group bg-gray-50 border border-gray-100 hover:border-[#26318c]/30 hover:bg-[#26318c]/5 rounded-xl p-3 transition-all h-full"
                     >
                       <div className="flex items-center gap-2">
@@ -616,7 +677,12 @@ function ReportPage() {
                           {source.name}
                         </span>
                         {source.url !== "#" && (
-                          <a href={source.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#26318c] transition-colors shrink-0">
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-gray-400 hover:text-[#26318c] transition-colors shrink-0"
+                          >
                             <ExternalLinkIcon />
                           </a>
                         )}
@@ -627,7 +693,9 @@ function ReportPage() {
                     </li>
                   ))
                 ) : (
-                  <li className="text-gray-400 p-2 col-span-full">ไม่มีข้อมูล Source Code</li>
+                  <li className="text-gray-400 p-2 col-span-full">
+                    ไม่มีข้อมูล Source Code
+                  </li>
                 )}
               </ul>
 
@@ -638,14 +706,17 @@ function ReportPage() {
                     onClick={() => setShowAllSources(!showAllSources)}
                     className="text-xs font-semibold text-gray-500 hover:text-[#26318c] border border-gray-200 hover:border-[#26318c] bg-white hover:bg-gray-50 px-6 py-2 rounded-full transition-all flex items-center gap-2"
                   >
-                    {showAllSources ? "แสดงน้อยลง" : `แสดงเพิ่มเติม (${currentViewData.sources.length - 8} รายการ)`}
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAllSources ? "rotate-180" : ""}`} />
+                    {showAllSources
+                      ? "แสดงน้อยลง"
+                      : `แสดงเพิ่มเติม (${currentViewData.sources.length - 8} รายการ)`}
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-300 ${showAllSources ? "rotate-180" : ""}`}
+                    />
                   </button>
                 </div>
               )}
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -654,8 +725,19 @@ function ReportPage() {
 
 function ExternalLinkIcon() {
   return (
-    <svg className="inline-block w-3.5 h-3.5 ml-0.5 align-text-bottom transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    <svg
+      className="inline-block w-3.5 h-3.5 ml-0.5 align-text-bottom transition-colors"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+      />
     </svg>
   );
 }
