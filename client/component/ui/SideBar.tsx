@@ -156,25 +156,6 @@ function Sidebar() {
               </Link>
 
               <Link
-                href="/dashboard/insight"
-                onClick={() => setIsMobileOpen(false)}
-                className={`group flex items-center h-11 rounded-xl text-[#26318c] hover:bg-[#f8f9fa] hover:shadow-sm transition-all duration-200 ${
-                  collapsed ? "justify-center px-0" : "px-4"
-                }`}
-              >
-                <Brain
-                  size={20}
-                  strokeWidth={1.5}
-                  className="shrink-0 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-transform duration-300"
-                />
-                {!collapsed && (
-                  <span className="ml-3 text-sm font-medium whitespace-nowrap animate-fadeIn">
-                    Insight
-                  </span>
-                )}
-              </Link>
-
-              <Link
                 href="/dashboard/report"
                 onClick={() => setIsMobileOpen(false)}
                 className={`group flex items-center h-11 rounded-xl text-[#26318c] hover:bg-[#f8f9fa] hover:shadow-sm transition-all duration-200 ${
